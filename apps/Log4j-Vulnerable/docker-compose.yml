@@ -1,0 +1,45 @@
+services:
+
+  # ⚠️ VULNERABLE — Log4j 2.14.1 (CVE-2021-44228)
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: hafb-auth
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./flags:/flags:ro
+    networks:
+      - hafb-net
+    restart: unless-stopped
+
+  # ⚠️ VULNERABLE — Log4j 2.14.1 (CVE-2021-44228)
+  inventory-service:
+    build:
+      context: ./services/inventory-service
+      dockerfile: Dockerfile
+    container_name: hafb-inventory
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./flags:/flags:ro
+    networks:
+      - hafb-net
+    restart: unless-stopped
+
+  # ✅ NOT VULNERABLE — Python Flask, no Log4j
+  status-service:
+    build:
+      context: ./services/status-service
+      dockerfile: Dockerfile
+    container_name: hafb-status
+    ports:
+      - "8003:8003"
+    networks:
+      - hafb-net
+    restart: unless-stopped
+
+networks:
+  hafb-net:
+    driver: bridge

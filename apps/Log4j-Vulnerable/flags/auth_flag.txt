@@ -1,0 +1,1 @@
+FLAG{hafb-log4shell-auth-rce-success}

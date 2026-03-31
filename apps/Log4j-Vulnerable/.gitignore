@@ -1,0 +1,28 @@
+# Java build artifacts
+target/
+*.jar
+*.war
+*.class
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
