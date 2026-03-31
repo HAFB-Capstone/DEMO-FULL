@@ -1,0 +1,3 @@
+index=linux_logs sourcetype=syslog "known USB device found"
+| table _time, host, message
+| sort -_time

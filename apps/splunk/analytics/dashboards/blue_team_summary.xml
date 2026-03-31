@@ -1,0 +1,42 @@
+<dashboard>
+  <label>Blue Team Summary</label>
+  <description>Primary dashboard for tracking network health and potential threats.</description>
+  <row>
+    <panel>
+      <title>Failed SSH Logins</title>
+      <chart>
+        <search>
+          <query>index=* sourcetype=syslog "Failed password" | timechart count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Universal Forwarder Status</title>
+      <table>
+        <search>
+          <query>index=_internal sourcetype=splunkd group=tcpin_connections | dedup hostname | table hostname, sourceIp, arch, os, version</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Recent Auth Events</title>
+      <event>
+        <search>
+          <query>index=* sourcetype=syslog (Accepted OR Failed)</query>
+          <earliest>-1h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="list.drilldown">full</option>
+      </event>
+    </panel>
+  </row>
+</dashboard>

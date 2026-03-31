@@ -1,0 +1,4 @@
+index=linux_logs sourcetype=syslog "Failed password"
+| stats count by user, src_ip
+| where count > 5
+| sort -count

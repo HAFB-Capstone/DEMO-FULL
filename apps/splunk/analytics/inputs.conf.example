@@ -1,0 +1,17 @@
+# SPLUNK INPUTS.CONF EXAMPLE
+# Place this file at /opt/splunkforwarder/etc/system/local/inputs.conf on the target
+# or deploy via Deployment Server.
+
+[default]
+host = <TARGET_HOSTNAME>
+
+# Monitor standard Linux logs
+[monitor:///var/log/syslog]
+disabled = 0
+index = linux_logs
+sourcetype = syslog
+
+[monitor:///var/log/auth.log]
+disabled = 0
+index = linux_logs
+sourcetype = syslog

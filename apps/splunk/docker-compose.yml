@@ -1,0 +1,38 @@
+services:
+  splunk:
+    build: ./configuration
+    hostname: splunk
+    restart: always
+    tty: true
+    user: splunk
+    environment:
+      - SPLUNK_START_ARGS=--accept-license --no-kvstore
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_PASSWORD=${SPLUNK_PASSWORD}
+      - SPLUNK_USER=splunk
+      - ANSIBLE_BECOME=false
+    ports:
+      - "8002:8000" # Web interface
+      - "8089:8089" # Management port
+      - "9997:9997" # Universal Forwarder port
+    volumes:
+      - splunk_etc:/opt/splunk/etc # Splunk configs
+      - splunk_var:/opt/splunk/var # Splunk data
+      - ./analytics/rules:/opt/splunk/etc/apps/custom_rules:ro # Custom rulesl
+      - ./analytics/dashboards:/opt/splunk/etc/apps/search/local/data/ui/views:ro # Auto-load custom dashboards
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/en-US/account/login"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+volumes:
+  splunk_etc:
+    driver: local
+  splunk_var:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
