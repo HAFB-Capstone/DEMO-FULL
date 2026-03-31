@@ -1,0 +1,123 @@
+body {
+    background-color: #f0f2f5;
+    color: #1a1a1a;
+    font-family: 'Courier New', Courier, monospace; /* Technical feel */
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.banner {
+    background-color: #003087; /* Air Force Blue */
+    color: white;
+    text-align: center;
+    padding: 5px;
+    font-weight: bold;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+}
+
+.top-banner { border-bottom: 2px solid #b2b2b2; }
+.bottom-banner { margin-top: auto; border-top: 2px solid #b2b2b2; }
+
+.header {
+    background-color: #ffffff;
+    padding: 20px;
+    border-bottom: 4px solid #003087;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-area h1 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #003087;
+}
+
+.logo-area h2 {
+    margin: 5px 0 0;
+    font-size: 0.9em;
+    color: #555;
+    font-weight: normal;
+}
+
+.classification {
+    font-weight: bold;
+    color: #00aa00; /* Green for Unclassified */
+    border: 1px solid #00aa00;
+    padding: 5px 10px;
+}
+
+.main-container {
+    display: flex;
+    padding: 40px;
+    gap: 20px;
+    justify-content: center;
+}
+
+.panel {
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    max-width: 600px;
+    width: 100%;
+}
+
+.panel-header {
+    background: #e1e4e8;
+    padding: 10px 15px;
+    border-bottom: 1px solid #ccc;
+    font-weight: bold;
+    color: #333;
+}
+
+.panel-header h3 { margin: 0; font-size: 1.1em; }
+
+.panel-body { padding: 20px; }
+
+.instruction { margin-top: 0; }
+
+.highlight { color: #d00000; font-weight: bold; }
+
+.status-box {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin: 20px 0;
+    font-size: 0.9em;
+}
+
+.status-ok { color: green; font-weight: bold; }
+.status-secure { color: #003087; font-weight: bold; }
+
+.upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+    border-top: 1px dashed #ccc;
+    padding-top: 20px;
+}
+
+.file-label { font-weight: bold; }
+
+.upload-btn {
+    background: #003087;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.2s;
+}
+
+.upload-btn:hover { background: #001f5c; }
+
+.sidebar { max-width: 300px; }
+.small-text { font-size: 0.85em; }
+.sidebar ul { padding-left: 20px; }

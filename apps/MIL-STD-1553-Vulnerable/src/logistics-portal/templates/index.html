@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>USAF LOGISTICS // F-16 AVIONICS MAINTENANCE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="banner top-banner">
+        WARNING: US GOVERNMENT SYSTEM // AUTHORIZED USE ONLY
+    </div>
+
+    <div class="header">
+        <div class="logo-area">
+            <h1>UNITED STATES AIR FORCE</h1>
+            <h2>388TH FIGHTER WING - LOGISTICS/MAINTENANCE DIVISION</h2>
+        </div>
+        <div class="classification">
+            UNCLASSIFIED // FOR OFFICIAL USE ONLY (FOUO)
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="panel">
+            <div class="panel-header">
+                <h3><span class="icon">✈</span> FLIGHT DATA SYNC PORTAL</h3>
+            </div>
+            <div class="panel-body">
+                <p class="instruction">
+                    Use this portal to upload daily avionics maintenance logs for processing.
+                    Ensure all files are sanitized according to <span class="highlight">AFMAN 17-1301</span>.
+                </p>
+                
+                <div class="status-box">
+                    <strong>SYSTEM STATUS:</strong> <span class="status-ok">OPERATIONAL</span>
+                    <br>
+                    <strong>CONNECTION:</strong> <span class="status-secure">SECURE (TLS 1.2)</span>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data" action="/upload" class="upload-form">
+                    <label for="logfile" class="file-label">SELECT MAINTENANCE LOG REVISION:</label>
+                    <input type="file" name="logfile" id="logfile" required>
+                    <button type="submit" class="upload-btn">
+                        INITIATE DATA TRANSFER
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="panel">
+                <div class="panel-header"><h3>NOTICES</h3></div>
+                <div class="panel-body small-text">
+                    <ul>
+                        <li>Login attempts are monitored and logged.</li>
+                        <li>Disconnect SATA bridges after use.</li>
+                        <li>Report anomalies to 75th SCO.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="banner bottom-banner">
+        CONTROLLED UNCLASSIFIED INFORMATION (CUI)
+    </div>
+</body>
+</html>

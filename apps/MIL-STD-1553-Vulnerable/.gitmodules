@@ -1,0 +1,3 @@
+[submodule "serial-bus/simulator"]
+	path = serial-bus/simulator
+	url = https://github.com/ShubhankarKulkarni/MIL-STD-1553-Simulator.git
