@@ -9,8 +9,8 @@ import socketserver
 import os
 import sys
 
-PORT = 8001
-DIRECTORY = "deployment"
+PORT = int(os.environ.get("PAYLOAD_SERVER_PORT", "8001"))
+DIRECTORY = os.environ.get("PAYLOAD_SERVER_DIR", "deployment")
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):

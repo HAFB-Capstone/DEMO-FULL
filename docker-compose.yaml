@@ -1,0 +1,197 @@
+# HAFB DEMO-FULL — red/blue scenario stack (all apps under ./apps)
+# Port map avoids collisions: Splunk UI 9000, Log4j 8101–8103, MIL logistics 9080, payload 8001
+name: hafb-demo
+
+services:
+  # ----- Blue team: Splunk Enterprise -----
+  splunk:
+    build:
+      context: ./apps/splunk/config
+      dockerfile: Dockerfile
+    hostname: splunk
+    restart: unless-stopped
+    tty: true
+    user: splunk
+    environment:
+      - SPLUNK_START_ARGS=--accept-license --no-kvstore
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_PASSWORD=${SPLUNK_PASSWORD:-Changeme1!}
+      - SPLUNK_USER=splunk
+      - ANSIBLE_BECOME=false
+    ports:
+      - "9000:8000"
+      - "9089:8089"
+      - "9997:9997"
+    volumes:
+      - splunk_etc:/opt/splunk/etc
+      - splunk_var:/opt/splunk/var
+      - ./apps/splunk/analytics/rules:/opt/splunk/etc/apps/custom_rules:ro
+      - ./apps/splunk/analytics/dashboards:/opt/splunk/etc/apps/search/local/data/ui/views:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/en-US/account/login"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - scenario
+
+  # Serves Universal Forwarder packages + deploy script for bare-metal/Linux targets (port 8001)
+  splunk-payloads:
+    image: python:3.12-slim
+    working_dir: /work
+    command: ["python", "deployment/serve.py"]
+    volumes:
+      - ./apps/splunk/deployment:/work/deployment
+    ports:
+      - "8001:8001"
+    environment:
+      - PAYLOAD_SERVER_PORT=8001
+      - PAYLOAD_SERVER_DIR=deployment
+    networks:
+      - scenario
+    restart: unless-stopped
+
+  # ----- MIL-STD-1553 vulnerable stack (zones / air-gap demo) -----
+  logistics-portal:
+    build: ./apps/MIL-STD-1553-Vulnerable/src/logistics-portal
+    ports:
+      - "9080:8080"
+    volumes:
+      - ./apps/MIL-STD-1553-Vulnerable/flags:/flags:ro
+    networks:
+      - mil1553-public
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  maintenance-terminal:
+    build: ./apps/MIL-STD-1553-Vulnerable/src/maintenance-terminal
+    networks:
+      - mil1553-public
+      - mil1553-avionics
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - logistics-portal
+      - serial-bus
+    restart: unless-stopped
+
+  serial-bus:
+    build: ./apps/MIL-STD-1553-Vulnerable/src/serial-bus
+    volumes:
+      - ./apps/MIL-STD-1553-Vulnerable/src/serial-bus:/app
+    ports:
+      - "5001:5001/udp"
+    networks:
+      - mil1553-avionics
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # ----- Log4j (CVE-2021-44228) lab services -----
+  log4j-auth-service:
+    build:
+      context: ./apps/Log4j-Vulnerable/services/auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8101:8001"
+    volumes:
+      - ./apps/Log4j-Vulnerable/flags:/flags:ro
+    networks:
+      - log4j-net
+    restart: unless-stopped
+
+  log4j-inventory-service:
+    build:
+      context: ./apps/Log4j-Vulnerable/services/inventory-service
+      dockerfile: Dockerfile
+    ports:
+      - "8102:8002"
+    volumes:
+      - ./apps/Log4j-Vulnerable/flags:/flags:ro
+    networks:
+      - log4j-net
+    restart: unless-stopped
+
+  log4j-status-service:
+    build:
+      context: ./apps/Log4j-Vulnerable/services/status-service
+      dockerfile: Dockerfile
+    ports:
+      - "8103:8003"
+    networks:
+      - log4j-net
+    restart: unless-stopped
+
+  # ----- Optional: Universal Forwarder containers (Docker “one UF per segment”) -----
+  uf-mil1553:
+    image: splunk/universalforwarder:10.0.0
+    hostname: uf-mil1553
+    environment:
+      - SPLUNK_START_ARGS=--accept-license --no-prompt
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_PASSWORD=${SPLUNK_UF_PASSWORD:-ChangemeUF1!}
+      - SPLUNK_STANDALONE_URL=splunk
+    depends_on:
+      splunk:
+        condition: service_healthy
+    networks:
+      - scenario
+    restart: unless-stopped
+    profiles:
+      - forwarders
+
+  uf-log4j:
+    image: splunk/universalforwarder:10.0.0
+    hostname: uf-log4j
+    environment:
+      - SPLUNK_START_ARGS=--accept-license --no-prompt
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_PASSWORD=${SPLUNK_UF_PASSWORD:-ChangemeUF1!}
+      - SPLUNK_STANDALONE_URL=splunk
+    depends_on:
+      splunk:
+        condition: service_healthy
+    networks:
+      - scenario
+    restart: unless-stopped
+    profiles:
+      - forwarders
+
+  uf-scenario:
+    image: splunk/universalforwarder:10.0.0
+    hostname: uf-scenario
+    environment:
+      - SPLUNK_START_ARGS=--accept-license --no-prompt
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_PASSWORD=${SPLUNK_UF_PASSWORD:-ChangemeUF1!}
+      - SPLUNK_STANDALONE_URL=splunk
+    depends_on:
+      splunk:
+        condition: service_healthy
+    networks:
+      - scenario
+    restart: unless-stopped
+    profiles:
+      - forwarders
+
+volumes:
+  splunk_etc:
+    driver: local
+  splunk_var:
+    driver: local
+
+networks:
+  scenario:
+    driver: bridge
+  mil1553-public:
+    driver: bridge
+  mil1553-avionics:
+    driver: bridge
+    internal: true
+  log4j-net:
+    driver: bridge

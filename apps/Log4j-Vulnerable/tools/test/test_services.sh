@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# =============================================================================
-# tools/test/test_services.sh
-# Verifies all three services are running and reachable.
-# Called by: make test
-# =============================================================================
-
+# Health checks for Log4j lab (expects root compose port map). Run: make test-log4j
 set -e
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m'
+
+: "${LOG4J_AUTH_PORT:=8101}"
+: "${LOG4J_INVENTORY_PORT:=8102}"
+: "${LOG4J_STATUS_PORT:=8103}"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 PASSED=0
 FAILED=0
@@ -20,7 +21,8 @@ check() {
     local url=$2
     local expected=$3
 
-    response=$(curl -s --connect-timeout 5 "$url" 2>/dev/null)
+    local response
+    response=$(curl -s --connect-timeout 5 "$url" 2>/dev/null || true)
 
     if echo "$response" | grep -q "$expected"; then
         echo -e "${GREEN}[PASS]${NC} $label"
@@ -36,41 +38,41 @@ check() {
 
 echo ""
 echo "========================================"
-echo "  VULN-Log4Shell Service Health Check"
+echo "  Log4j lab service health check"
 echo "========================================"
 echo ""
 
-# Auth service
 check "Auth service is running" \
-    "http://localhost:8001/health" \
+    "http://localhost:${LOG4J_AUTH_PORT}/health" \
     "UP"
 
 check "Auth service login endpoint responds" \
-    "http://localhost:8001/" \
+    "http://localhost:${LOG4J_AUTH_PORT}/" \
     "HAFB Auth Service"
 
-# Inventory service
 check "Inventory service is running" \
-    "http://localhost:8002/health" \
+    "http://localhost:${LOG4J_INVENTORY_PORT}/health" \
     "UP"
 
 check "Inventory service search endpoint responds" \
-    "http://localhost:8002/search" \
+    "http://localhost:${LOG4J_INVENTORY_PORT}/search" \
     "results"
 
-# Status service
 check "Status service is running" \
-    "http://localhost:8003/health" \
+    "http://localhost:${LOG4J_STATUS_PORT}/health" \
     "UP"
 
-check "Status service correctly identifies as non-vulnerable" \
-    "http://localhost:8003/" \
+check "Status service identifies as non-vulnerable (Python)" \
+    "http://localhost:${LOG4J_STATUS_PORT}/" \
     "Python"
 
-# Flags
-check "Auth flag exists" \
-    "file://$(pwd)/flags/auth_flag.txt" \
-    "FLAG{"
+if [ -f "$APP_ROOT/flags/auth_flag.txt" ] && grep -q "FLAG{" "$APP_ROOT/flags/auth_flag.txt" 2>/dev/null; then
+    echo -e "${GREEN}[PASS]${NC} Auth flag file present on host"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "${RED}[FAIL]${NC} Auth flag missing or invalid at flags/auth_flag.txt"
+    FAILED=$((FAILED + 1))
+fi
 
 echo ""
 echo "========================================"
@@ -78,7 +80,7 @@ echo "  Results: Passed=$PASSED  Failed=$FAILED"
 echo "========================================"
 echo ""
 
-if [ $FAILED -eq 0 ]; then
+if [ "$FAILED" -eq 0 ]; then
     echo -e "${GREEN}All checks passed.${NC}"
     exit 0
 else

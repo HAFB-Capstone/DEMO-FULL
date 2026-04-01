@@ -1,26 +1,19 @@
 #!/usr/bin/env bash
-# =============================================================================
-# restore.sh — Game State Reset
-# Wipes containers and rebuilds from scratch.
-# Called by: make reset
-# =============================================================================
-
+# Recreate Log4j lab services only (does not stop Splunk / MIL / payloads).
 set -e
 
-echo "[*] Resetting VULN-Log4Shell environment..."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+COMPOSE_FILE="$REPO_ROOT/docker-compose.yaml"
 
-# Stop and remove containers
-docker compose down --remove-orphans
+echo "[*] Recreating Log4j lab containers (root compose)..."
 
-# Rebuild images fresh
-docker compose build --no-cache
-
-# Start services
-docker compose up -d
+docker compose -f "$COMPOSE_FILE" up -d --build --force-recreate \
+    log4j-auth-service log4j-inventory-service log4j-status-service
 
 echo ""
-echo "[+] Reset complete. Services are back to original state."
-echo "    Auth Service      -> http://localhost:8001"
-echo "    Inventory Service -> http://localhost:8002"
-echo "    Status Service    -> http://localhost:8003"
+echo "[+] Reset complete."
+echo "    Auth      -> http://localhost:8101"
+echo "    Inventory -> http://localhost:8102"
+echo "    Status    -> http://localhost:8103"
 echo ""

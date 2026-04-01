@@ -13,8 +13,9 @@ import urllib3
 # Suppress insecure request warnings for self-signed certs
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Docker maps 8089->8089 (Management Port)
-API_URL = "https://localhost:8089/services/server/info?output_mode=json"
+# Management API (root compose maps host 9089 -> container 8089; standalone splunk uses 8089:8089)
+_mgmt_base = os.environ.get("SPLUNK_MGMT_BASE", "https://localhost:8089").rstrip("/")
+API_URL = f"{_mgmt_base}/services/server/info?output_mode=json"
 API_USER = "admin"
 
 def check_splunk():

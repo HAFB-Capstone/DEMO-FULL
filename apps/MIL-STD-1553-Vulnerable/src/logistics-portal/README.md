@@ -8,7 +8,7 @@
 This is the public face of the maintenance system. It allows authorized personnel to upload flight logs. The backend logic is intentionally flawed to allow Red Team trainees to upload arbitrary files.
 
 ## Technical Details
-- **Port:** 80 (Host) -> 8080 (Container)
+- **Port (DEMO-FULL):** 9080 (host) → 8080 (container)
 - **Application:** `app.py`
 - **Template Engine:** Jinja2 (`templates/index.html`)
 - **Static Assets:** `static/css/style.css`

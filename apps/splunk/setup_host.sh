@@ -56,7 +56,11 @@ fi
 # Write version.txt so target machines can sync what version to pull
 echo "${SPLUNK_FORWARDER_VERSION}" > "$PAYLOAD_DIR/version.txt"
 
-# Start Payload Server
+# Start Payload Server (skip when integrated with root compose: splunk-payloads service)
 echo "[*] Configuration complete."
+if [ "${SKIP_SERVE:-0}" = "1" ]; then
+    echo "[*] SKIP_SERVE=1 — payload server is run separately (e.g. docker compose splunk-payloads)."
+    exit 0
+fi
 echo "[*] Starting Payload Server..."
 python3 deployment/serve.py

@@ -12,7 +12,7 @@ The environment simulates a realistic segmented military network:
 
 1.  **Zone 1: NIPRNet (The Office)**
     *   **Service:** `logistics-portal` (web)
-    *   **IP:** Exposed on `localhost:80`
+    *   **Host URL (DEMO-FULL compose):** `http://localhost:9080`
     *   **Role:** Central repository for maintenance scripts and logs.
     *   **Vulnerability:** Unrestricted File Upload.
 
@@ -25,7 +25,7 @@ The environment simulates a realistic segmented military network:
 
 3.  **Zone 3: The Jet (F-16 Avionics)**
     *   **Service:** `serial-bus` (udp/5001)
-    *   **Network:** `avionics-net` (Air-Gapped / Internal Only).
+    *   **Network:** `mil1553-avionics` (internal-only bridge network in root compose).
     *   **Role:** F-16 Engine Controller.
     *   **Protocol:** MIL-STD-1553 (Simulated over UDP).
 
@@ -48,26 +48,23 @@ graph LR
     linkStyle 1 stroke-width:4px,fill:none,stroke:red;
 ```
 
-## Deployment
+## Deployment (monorepo)
+
+From the **repository root** (`DEMO-FULL/`):
+
 ```bash
-# 1. Start the exercise
-make up
-
-# 2. Reset the environment (if you break it)
-make reset
-
-# 3. View logs (to see if you triggered the engine)
-make logs
-
-# 4. Run automated tests (verify the kill chain)
-make test
+make up                    # full stack (or at least MIL services are included)
+make logs                  # all services; filter: docker compose logs -f logistics-portal maintenance-terminal serial-bus
+make reset-mil1553         # recreate only MIL-STD-1553 containers
+make test-mil1553-chain    # ephemeral compose project: full upload → bridge → bus chain
+make test-mil1553-tools    # ephemeral serial-bus + attacker container checks
 ```
 
 ## Classified: Exploitation Guide (Red Team Eyes Only)
 
 ### Phase 1: Initial Access
 1.  **Reconnaissance**
-    *   **Target**: `http://localhost:80` (Logistics Portal)
+    *   **Target**: `http://localhost:9080` (logistics portal on the host)
     *   **Action**: Observe the "Maintenance Log Upload" form.
     *   **The Flaw**: The application takes the filename provided by the user and saves it directly to the local filesystem without sanitizing the path.
 
@@ -88,7 +85,7 @@ The F-16 is air-gapped. You cannot reach it directly. You must trick the **Maint
 
 ### Phase 3: Effects
 1.  **Execution**: Wait ~10 seconds. The terminal will fetch your script.
-2.  **Verification**: Run `make logs`. You should see:
+2.  **Verification**: Run `make logs` from the repo root (or `docker compose logs -f maintenance-terminal serial-bus`). You should see:
     ```text
     [maintenance-terminal] [!] New maintenance order received via NIPRNet!
     [maintenance-terminal] [*] Executing maintenance routine...
@@ -102,8 +99,8 @@ The F-16 is air-gapped. You cannot reach it directly. You must trick the **Maint
 | `src/maintenance-terminal` | The Bridge (Simulated Laptop). |
 | `src/serial-bus` | Python UDP Server (The Hardware Simulator). |
 | `tools/attack` | Attacker toolkit (Red Team scripts & payload). |
-| `tools/test` | Automated verification scripts. |
-| `Makefile` | Admin control scripts. |
+| `tools/test` | Automated verification scripts (invoked via root `Makefile`). |
+| `restore.sh` | Recreate MIL services through root `docker-compose.yaml`. |
 
 ## Credits
 Please visit [this repository](https://github.com/ShubhankarKulkarni/MIL-STD-1553-Simulator) for the serial bus emulator source code.

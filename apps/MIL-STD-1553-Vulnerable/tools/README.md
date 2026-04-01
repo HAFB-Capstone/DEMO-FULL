@@ -6,10 +6,13 @@ This directory contains resources for the Red Team engagement.
 *   `attack/`: Contains the python scripts and `attack_payload.sh` used to interact with the avionics bus. Includes a Dockerfile to build an isolated attacker container.
 *   `test/`: Automated verification scripts to ensure the environment is functioning correctly.
 
-## automated Testing
-You can run the full verification suite using:
+## Automated testing
+
+From the monorepo root:
+
 ```bash
-make test
+make test-mil1553-chain   # end-to-end upload → maintenance terminal → bus
+make test-mil1553-tools   # attacker container vs ephemeral serial-bus
 ```
 
 ## The Scripts
