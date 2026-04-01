@@ -1,0 +1,21 @@
+{
+  "pinned_syft_version": "1.23.1",
+  "pinned_syft_image": "anchore/syft:v1.23.1",
+  "base_image_note": "python:3.12.8-slim-bookworm@sha256:2199a62885a12290dc9c5be3ca0681d367576ab7bf037da120e564723292a2f0",
+  "vendor_spdx_package_count": 9,
+  "flight_path_components_min": 3000,
+  "flight_path_components_max": 4000,
+  "radar_control_components_min": 3000,
+  "radar_control_components_max": 4000,
+  "example_flask_purl": "pkg:pypi/flask@3.0.0",
+  "example_django_purl": "pkg:pypi/django@5.0.1",
+  "shared_pypi_purls_must_include": [
+    "pkg:pypi/requests@2.31.0",
+    "pkg:pypi/urllib3@2.6.3"
+  ],
+  "reference_artifact_checksums_sha256": {
+    "flight-path-v1.tar": "29b65d1e746923fc22c5b7d7438fbac035a75a93e9536195b28cb2249c9015ba",
+    "radar-control-v1.tar": "dd810bf26b583b6baddc5b7997a4fa3fe583cb7c9b930bdec294b85bf739621a"
+  },
+  "reference_checksums_note": "SHA-256 values are from the maintainer build on 2026-03-20 (Windows/Docker Desktop). Rebuilding images changes layer IDs and therefore tar checksums; use Dockerfile base digest + image tags for reproducibility, then re-record hashes after release."
+}
