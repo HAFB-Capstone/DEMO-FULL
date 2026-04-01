@@ -8,11 +8,13 @@ set -euo pipefail
 
 LAB_DIR_DEFAULT="$HOME/labs/sbom-Module1-sbom-xray"
 LAB_DIR="$LAB_DIR_DEFAULT"
+LAB_DIR_EXPLICIT=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --lab-dir)
       LAB_DIR="${2:?missing value for --lab-dir}"
+      LAB_DIR_EXPLICIT=1
       shift 2
       ;;
     *)
@@ -21,6 +23,14 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$LAB_DIR_EXPLICIT" -eq 0 ]]; then
+  if [[ ! -f "$LAB_DIR/flight-path-v1.tar" || ! -f "$LAB_DIR/radar-control-v1.tar" ]]; then
+    if [[ -f "/lab/flight-path-v1.tar" && -f "/lab/radar-control-v1.tar" ]]; then
+      LAB_DIR="/lab"
+    fi
+  fi
+fi
 
 cd "$LAB_DIR"
 
@@ -32,6 +42,7 @@ for f in \
 do
   if [[ ! -f "$f" ]]; then
     echo "Missing required file: $LAB_DIR/$f" >&2
+    echo "Hint: stage image tars and lab files with: SBOM_XRAY_CONTAINER=1 bash /lab/install-module1-offline.sh --lab-dir /lab" >&2
     exit 1
   fi
 done
@@ -68,23 +79,22 @@ fi
 echo "Validating required shared PURLs exist in intersection ..."
 fp_purls="$(mktemp)"
 radar_purls="$(mktemp)"
-trap 'rm -f "$fp_purls" "$radar_purls"' EXIT
+shared_purls="$(mktemp)"
+trap 'rm -f "$fp_purls" "$radar_purls" "$shared_purls"' EXIT
 
 syft flight-path-v1.tar -o cyclonedx-json | jq -r '.components[].purl | select(. != null)' | sort -u > "$fp_purls"
 syft radar-control-v1.tar -o cyclonedx-json | jq -r '.components[].purl | select(. != null)' | sort -u > "$radar_purls"
-comm -12 "$fp_purls" "$radar_purls" > /tmp/module1-shared-purls.txt
+comm -12 "$fp_purls" "$radar_purls" > "$shared_purls"
 
 for req in \
   "pkg:pypi/requests@2.31.0" \
   "pkg:pypi/urllib3@2.6.3"
 do
-  if ! grep -Fq "$req" /tmp/module1-shared-purls.txt; then
+  if ! grep -Fq "$req" "$shared_purls"; then
     echo "FAIL: missing required shared PURL in intersection: $req" >&2
     exit 1
   fi
 done
-
-rm -f /tmp/module1-shared-purls.txt
 
 echo "SUCCESS: Offline Module 1 validation passed."
 

@@ -7,6 +7,7 @@ Monorepo that wires **HAFB capstone apps** into one Docker Compose stack for red
 - [Docker](https://docs.docker.com/get-docker/) with Compose v2 (`docker compose`)
 - **GNU Make** and **Bash** (Git Bash or WSL on Windows; native Linux/macOS work out of the box)
 - Network access for the **first** `make setup` if Splunk forwarder `.deb` / `.rpm` files are not already in `apps/splunk/deployment/payloads/` (the Splunk app’s `setup_host.sh` downloads them when possible)
+- Network access for the **first** build of **`sbom-xray-lab`** so Docker can download pinned **Syft** and **jq** release binaries (see `apps/SBOM-XRay/docker/Dockerfile`); runtime does not fetch them again
 
 ## Quick start
 
@@ -52,6 +53,10 @@ flowchart TB
         MT --- SB
     end
 
+    subgraph sbom["SBOM-XRay — sbom-lab only"]
+        SX["sbom-xray-lab CLI"]
+    end
+
     subgraph host["Operator laptop"]
         OP([Presenter / students])
     end
@@ -63,11 +68,13 @@ flowchart TB
     OP --> ST
     OP --> LP
     OP -.- SB
+    OP --> SX
 ```
 
 - **MIL-STD-1553:** `logistics-portal` and `maintenance-terminal` share `mil1553-public`; `serial-bus` sits on **`mil1553-avionics`**, which is **internal** (no direct route to the internet or Splunk segment).
 - **Log4j:** All three APIs share `log4j-net` only with each other on the container network; you reach them via **published** host ports **8101–8103**.
 - **Splunk / payloads / optional UFs:** Share `scenario`; published ports reach the host.
+- **SBOM-XRay:** `sbom-xray-lab` uses **`sbom-lab` only** (isolated from Splunk/Log4j/MIL networks); reach it with `docker compose exec sbom-xray-lab bash` — **no** host port.
 
 ## Attack routes (red team)
 
@@ -144,6 +151,7 @@ Use this as a **presenter runbook** (~20–30 minutes with discussion). Adjust o
 | Blue team | Payload server | **http://localhost:8001** — forwarder installers + `deploy_splunk_forwarder.sh` for **Linux targets** |
 | MIL-STD-1553 lab | logistics portal, maintenance terminal, serial bus | Portal **http://localhost:9080**, UDP **5001** |
 | Log4j lab | auth, inventory, status | **http://localhost:8101** … **8103** |
+| SBOM-XRay lab | `sbom-xray-lab` (sleeping container; CLI via `exec`) | No published port — `make sbom-shell` |
 
 Host ports are chosen so **nothing collides** on one machine (Splunk UI is not 8002 because the Log4j inventory service maps there internally).
 
@@ -162,6 +170,8 @@ Host ports are chosen so **nothing collides** on one machine (Splunk UI is not 8
 | `make clean` | Stop and **remove volumes** (Splunk data reset) |
 | `make forwarders-up` / `make forwarders-down` | Optional UF profile |
 | `make validate` | Splunk API check **inside** the `splunk` container |
+| `make sbom-shell` | Interactive `bash` **inside** `sbom-xray-lab` |
+| `make sbom-validate` | Run SBOM Module 1 offline validation in `sbom-xray-lab` |
 | `make urls` | Print service URLs |
 | `make test-log4j` | HTTP health checks for Log4j lab (ports 8101–8103) |
 | `make test-mil1553-chain` | Ephemeral end-to-end MIL attack chain (uses host **9080** / **5001** — stop main stack first if needed) |
@@ -192,7 +202,7 @@ Details: [apps/splunk/README.md](apps/splunk/README.md).
 - **`apps/MIL-STD-1553-Vulnerable/`** — Multi-zone 1553 / logistics scenario ([README](apps/MIL-STD-1553-Vulnerable/README.md)).
 - **`apps/Log4j-Vulnerable/`** — Log4Shell lab ([README](apps/Log4j-Vulnerable/README.md)).
 - **`apps/splunk/`** — Splunk image, analytics, payloads ([README](apps/splunk/README.md)).
-- **`apps/SBOM-XRay/`** — Offline SBOM lab ([README](apps/SBOM-XRay/README.md)); not part of Compose.
+- **`apps/SBOM-XRay/`** — SBOM lab ([README](apps/SBOM-XRay/README.md)); **`sbom-xray-lab`** starts with the default Compose stack (CLI; isolated `sbom-lab` network).
 
 ## Troubleshooting
 

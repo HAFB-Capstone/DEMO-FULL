@@ -48,13 +48,15 @@ require_image_artifact() {
   exit 1
 }
 
-if [[ ! -f "$TOOL_SYFT_SRC" ]]; then
-  echo "Missing syft binary in bundle: $TOOL_SYFT_SRC" >&2
-  exit 1
-fi
-if [[ ! -f "$TOOL_JQ_SRC" ]]; then
-  echo "Missing jq binary in bundle: $TOOL_JQ_SRC" >&2
-  exit 1
+if [[ "${SBOM_XRAY_CONTAINER:-}" != "1" ]]; then
+  if [[ ! -f "$TOOL_SYFT_SRC" ]]; then
+    echo "Missing syft binary in bundle: $TOOL_SYFT_SRC" >&2
+    exit 1
+  fi
+  if [[ ! -f "$TOOL_JQ_SRC" ]]; then
+    echo "Missing jq binary in bundle: $TOOL_JQ_SRC" >&2
+    exit 1
+  fi
 fi
 
 require_image_artifact flight-path-v1
@@ -81,28 +83,32 @@ for f in "${REQUIRED_ARTIFACTS[@]}"; do
   fi
 done
 
-echo "Installing tooling (pinned syft + jq) ..."
-if command -v sudo >/dev/null 2>&1; then
-  SUDO="sudo"
+if [[ "${SBOM_XRAY_CONTAINER:-}" == "1" ]]; then
+  echo "SBOM_XRAY_CONTAINER=1: using syft/jq from the environment (skip installing bundled binaries to /usr/local/bin)."
 else
-  SUDO=""
-fi
+  echo "Installing tooling (pinned syft + jq) ..."
+  if command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+  else
+    SUDO=""
+  fi
 
-TARGET_BIN_DIR="/usr/local/bin"
-if [[ -n "$SUDO" ]] || [[ -w "$TARGET_BIN_DIR" ]]; then
-  $SUDO mkdir -p "$TARGET_BIN_DIR" >/dev/null 2>&1 || true
-  $SUDO install -m 0755 "$TOOL_SYFT_SRC" "$TARGET_BIN_DIR/syft"
-  $SUDO install -m 0755 "$TOOL_JQ_SRC" "$TARGET_BIN_DIR/jq"
-  export PATH="$TARGET_BIN_DIR:$PATH"
-else
-  # Fallback: install into ~/.local/bin (students run immediately after install).
-  TARGET_BIN_DIR="$HOME/.local/bin"
-  mkdir -p "$TARGET_BIN_DIR"
-  install -m 0755 "$TOOL_SYFT_SRC" "$TARGET_BIN_DIR/syft"
-  install -m 0755 "$TOOL_JQ_SRC" "$TARGET_BIN_DIR/jq"
-  export PATH="$TARGET_BIN_DIR:$PATH"
-  echo "WARNING: No sudo/privilege. Installed tools into $TARGET_BIN_DIR." >&2
-  echo "Ensure your shell PATH includes $TARGET_BIN_DIR for later sessions." >&2
+  TARGET_BIN_DIR="/usr/local/bin"
+  if [[ -n "$SUDO" ]] || [[ -w "$TARGET_BIN_DIR" ]]; then
+    $SUDO mkdir -p "$TARGET_BIN_DIR" >/dev/null 2>&1 || true
+    $SUDO install -m 0755 "$TOOL_SYFT_SRC" "$TARGET_BIN_DIR/syft"
+    $SUDO install -m 0755 "$TOOL_JQ_SRC" "$TARGET_BIN_DIR/jq"
+    export PATH="$TARGET_BIN_DIR:$PATH"
+  else
+    # Fallback: install into ~/.local/bin (students run immediately after install).
+    TARGET_BIN_DIR="$HOME/.local/bin"
+    mkdir -p "$TARGET_BIN_DIR"
+    install -m 0755 "$TOOL_SYFT_SRC" "$TARGET_BIN_DIR/syft"
+    install -m 0755 "$TOOL_JQ_SRC" "$TARGET_BIN_DIR/jq"
+    export PATH="$TARGET_BIN_DIR:$PATH"
+    echo "WARNING: No sudo/privilege. Installed tools into $TARGET_BIN_DIR." >&2
+    echo "Ensure your shell PATH includes $TARGET_BIN_DIR for later sessions." >&2
+  fi
 fi
 
 if ! command -v syft >/dev/null 2>&1; then
@@ -123,6 +129,9 @@ mkdir -p "$LAB_DIR"
 mkdir -p "$LAB_DIR/instructor"
 
 echo "Copying artifacts into lab folder ..."
+_bundle_real="$(cd "$BUNDLE_DIR" && pwd)"
+_lab_real="$(cd "$LAB_DIR" && pwd)"
+
 stage_image_tar() {
   local base="$1"
   if [[ -f "$ART_DIR/${base}.tar.gz" ]]; then
@@ -135,14 +144,21 @@ stage_image_tar flight-path-v1
 stage_image_tar radar-control-v1
 cp -f "$ART_DIR/"vendor_claim.spdx.json "$LAB_DIR/"
 cp -f "$ART_DIR/"SBOM_Minimum_Elements.md "$LAB_DIR/"
-cp -f "$BUNDLE_DIR/expected_outputs.json" "$LAB_DIR/"
+if [[ "$_bundle_real" != "$_lab_real" ]]; then
+  cp -f "$BUNDLE_DIR/expected_outputs.json" "$LAB_DIR/"
+elif [[ ! -f "$LAB_DIR/expected_outputs.json" ]]; then
+  echo "Missing expected_outputs.json in lab directory: $LAB_DIR" >&2
+  exit 1
+fi
 
 echo "Copying student guide + worksheet ..."
 cp -f "$STUDENT_DIR/"sbom-xray-lab-student-guide.md "$LAB_DIR/"
 cp -f "$STUDENT_DIR/"sbom-xray-lab-student-worksheet.md "$LAB_DIR/"
 
 echo "Copying instructor materials ..."
-cp -f "$INSTR_DIR"/* "$LAB_DIR/instructor/"
+if [[ "$_bundle_real" != "$_lab_real" ]]; then
+  cp -f "$INSTR_DIR"/* "$LAB_DIR/instructor/"
+fi
 
 echo "Integrity check (bundle SHA-256sums) ..."
 if [[ -f "$BUNDLE_DIR/SHA256SUMS.txt" ]]; then
@@ -170,31 +186,39 @@ fi
 # 2) Ensure required shared PURLs intersect across both images.
 fp_purls="$(mktemp)"
 radar_purls="$(mktemp)"
-trap 'rm -f "$fp_purls" "$radar_purls"' EXIT
+shared_purls="$(mktemp)"
+trap 'rm -f "$fp_purls" "$radar_purls" "$shared_purls"' EXIT
 
 syft flight-path-v1.tar -o cyclonedx-json | jq -r '.components[].purl | select(. != null)' | sort -u > "$fp_purls"
 syft radar-control-v1.tar -o cyclonedx-json | jq -r '.components[].purl | select(. != null)' | sort -u > "$radar_purls"
 
-comm -12 "$fp_purls" "$radar_purls" > /tmp/module1-shared-purls.txt
+comm -12 "$fp_purls" "$radar_purls" > "$shared_purls"
 for req in \
   "pkg:pypi/requests@2.31.0" \
   "pkg:pypi/urllib3@2.6.3"
 do
-  if ! grep -Fq "$req" /tmp/module1-shared-purls.txt; then
+  if ! grep -Fq "$req" "$shared_purls"; then
     echo "FAIL: missing required shared PURL in intersection: $req" >&2
     exit 1
   fi
 done
-rm -f /tmp/module1-shared-purls.txt
 
-echo "Creating compatibility symlink for student guide path ..."
-mkdir -p "$HOME/labs"
-if [[ ! -e "$HOME/labs/sbom-xray" ]]; then
-  ln -s "$LAB_DIR" "$HOME/labs/sbom-xray"
+if [[ "${SBOM_XRAY_CONTAINER:-}" != "1" ]]; then
+  echo "Creating compatibility symlink for student guide path ..."
+  mkdir -p "$HOME/labs"
+  if [[ ! -e "$HOME/labs/sbom-xray" ]]; then
+    ln -s "$LAB_DIR" "$HOME/labs/sbom-xray"
+  fi
 fi
 
 echo "SUCCESS: Module 1 offline bundle installed into: $LAB_DIR"
-echo "Students should run:"
-echo "  cd ~/labs/sbom-xray"
-echo "  syft flight-path-v1.tar -o cyclonedx-json > internal_cdx.json"
+if [[ "${SBOM_XRAY_CONTAINER:-}" == "1" ]]; then
+  echo "In Docker, work from the lab mount, e.g.:"
+  echo "  cd $LAB_DIR"
+  echo "  syft flight-path-v1.tar -o cyclonedx-json > internal_cdx.json"
+else
+  echo "Students should run:"
+  echo "  cd ~/labs/sbom-xray"
+  echo "  syft flight-path-v1.tar -o cyclonedx-json > internal_cdx.json"
+fi
 

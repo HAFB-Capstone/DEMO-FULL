@@ -127,6 +127,21 @@ services:
       - log4j-net
     restart: unless-stopped
 
+  # ----- SBOM-XRay lab (CLI; bundled image tars via bind mount; isolated network) -----
+  sbom-xray-lab:
+    build:
+      context: ./apps/SBOM-XRay
+      dockerfile: docker/Dockerfile
+    working_dir: /lab
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./apps/SBOM-XRay:/lab:rw
+    command: ["sleep", "infinity"]
+    networks:
+      - sbom-lab
+    restart: unless-stopped
+
   # ----- Optional: Universal Forwarder containers (Docker “one UF per segment”) -----
   uf-mil1553:
     image: splunk/universalforwarder:10.0.0
@@ -194,4 +209,6 @@ networks:
     driver: bridge
     internal: true
   log4j-net:
+    driver: bridge
+  sbom-lab:
     driver: bridge

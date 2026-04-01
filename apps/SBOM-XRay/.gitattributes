@@ -1,0 +1,3 @@
+*.sh text eol=lf
+student/*.md text eol=lf
+instructor/*.md text eol=lf

@@ -3,6 +3,7 @@ COMPOSE ?= docker compose
 SHELL := /bin/bash
 
 .PHONY: help setup build up down restart logs ps clean forwarders-up forwarders-down validate urls \
+	sbom-shell sbom-validate \
 	test-log4j test-mil1553-chain test-mil1553-tools reset-log4j reset-mil1553
 
 help:
@@ -19,6 +20,8 @@ help:
 	@echo "  make forwarders-up      — start profile forwarders (UF containers → Splunk)"
 	@echo "  make forwarders-down    — stop forwarder profile containers"
 	@echo "  make validate           — quick Splunk API check inside splunk container"
+	@echo "  make sbom-shell         — interactive bash in sbom-xray-lab container"
+	@echo "  make sbom-validate      — run offline Module 1 validation inside sbom-xray-lab"
 	@echo "  make urls               — print service URLs"
 	@echo "  make test-log4j         — health checks (ports 8101–8103)"
 	@echo "  make test-mil1553-chain — ephemeral MIL upload → bridge → bus chain"
@@ -75,6 +78,13 @@ urls:
 	@echo "Log4j inventory:   http://localhost:8102"
 	@echo "Log4j status:      http://localhost:8103"
 	@echo "MIL serial bus UDP: localhost:5001"
+	@echo "SBOM-XRay lab:     docker compose exec sbom-xray-lab bash  (CLI only; no HTTP port)"
+
+sbom-shell:
+	$(COMPOSE) exec sbom-xray-lab bash
+
+sbom-validate:
+	$(COMPOSE) run --rm sbom-xray-lab bash /lab/validate-module1-offline.sh --lab-dir /lab
 
 test-log4j:
 	@chmod +x apps/Log4j-Vulnerable/tools/test/test_services.sh

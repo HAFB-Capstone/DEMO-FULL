@@ -1,0 +1,4 @@
+# Shrink build context; image installs syft/jq in Dockerfile — no lab tarballs needed at build.
+.local
+artifacts/*.tar
+artifacts/*.tar.gz
