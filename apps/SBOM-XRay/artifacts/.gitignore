@@ -1,2 +1,2 @@
-# Image tarballs exceed GitHub's 100MB per-file limit; keep locally or distribute via releases/internal share.
+# Uncompressed image archives exceed GitHub's 100MB limit; repo ships *.tar.gz. Keep local *.tar from builds untracked.
 *.tar

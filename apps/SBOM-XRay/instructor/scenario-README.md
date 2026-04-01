@@ -8,7 +8,7 @@ Offline-first SBOM literacy lab: **generate CycloneDX** from container archives,
 |------|---------|
 | `docker/flight-path/` | Dockerfile for `flight-path-v1` training image |
 | `docker/radar-control/` | Dockerfile for `radar-control-v1` (shared-deps overlap) |
-| `artifacts/` | Staged **offline** files shipped to students: SPDX claim, checklist (image `.tar` files are **built**, not committed) |
+| `artifacts/` | Staged **offline** files: SPDX claim, checklist, image payloads as **`.tar.gz`** in git (under GitHub’s 100 MB limit); optional local **`.tar`** from `build-artifacts.*` |
 | `expected_outputs.json` | Ranges and exemplar PURLs used by `scripts/verify_sbom_xray_lab.py` |
 
 ## Deployment copy on the lab VM
@@ -17,7 +17,7 @@ Ansible or facilitators should mirror this folder to:
 
 `~/labs/sbom-xray/`
 
-Expected files visible to students:
+Expected files visible to students (after `install-module1-offline.sh`, which decompresses `artifacts/*.tar.gz` into the lab folder):
 
 - `flight-path-v1.tar`
 - `radar-control-v1.tar` (**required** for PRD shared-PURL objective)
@@ -45,7 +45,9 @@ From this directory:
 Then compute SHA-256 for your release notes (example):
 
 ```bash
-sha256sum artifacts/flight-path-v1.tar artifacts/radar-control-v1.tar
+sha256sum artifacts/flight-path-v1.tar.gz artifacts/radar-control-v1.tar.gz
+# or, for uncompressed local builds:
+# sha256sum artifacts/flight-path-v1.tar artifacts/radar-control-v1.tar
 ```
 
 ## Tooling

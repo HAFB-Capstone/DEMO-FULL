@@ -34,12 +34,19 @@ STUDENT_DIR="$BUNDLE_DIR/student"
 INSTR_DIR="$BUNDLE_DIR/instructor"
 
 REQUIRED_ARTIFACTS=(
-  "flight-path-v1.tar"
-  "radar-control-v1.tar"
   "vendor_claim.spdx.json"
   "SBOM_Minimum_Elements.md"
   "expected_outputs.json"
 )
+
+require_image_artifact() {
+  local base="$1"
+  if [[ -f "$ART_DIR/${base}.tar.gz" ]] || [[ -f "$ART_DIR/${base}.tar" ]]; then
+    return 0
+  fi
+  echo "Missing image artifact: need $ART_DIR/${base}.tar.gz or $ART_DIR/${base}.tar" >&2
+  exit 1
+}
 
 if [[ ! -f "$TOOL_SYFT_SRC" ]]; then
   echo "Missing syft binary in bundle: $TOOL_SYFT_SRC" >&2
@@ -48,6 +55,16 @@ fi
 if [[ ! -f "$TOOL_JQ_SRC" ]]; then
   echo "Missing jq binary in bundle: $TOOL_JQ_SRC" >&2
   exit 1
+fi
+
+require_image_artifact flight-path-v1
+require_image_artifact radar-control-v1
+
+if [[ -f "$ART_DIR/flight-path-v1.tar.gz" || -f "$ART_DIR/radar-control-v1.tar.gz" ]]; then
+  if ! command -v gzip >/dev/null 2>&1; then
+    echo "gzip is required to decompress .tar.gz image artifacts." >&2
+    exit 1
+  fi
 fi
 
 for f in "${REQUIRED_ARTIFACTS[@]}"; do
@@ -106,8 +123,16 @@ mkdir -p "$LAB_DIR"
 mkdir -p "$LAB_DIR/instructor"
 
 echo "Copying artifacts into lab folder ..."
-cp -f "$ART_DIR/"flight-path-v1.tar "$LAB_DIR/"
-cp -f "$ART_DIR/"radar-control-v1.tar "$LAB_DIR/"
+stage_image_tar() {
+  local base="$1"
+  if [[ -f "$ART_DIR/${base}.tar.gz" ]]; then
+    gzip -dc "$ART_DIR/${base}.tar.gz" > "$LAB_DIR/${base}.tar"
+  else
+    cp -f "$ART_DIR/${base}.tar" "$LAB_DIR/"
+  fi
+}
+stage_image_tar flight-path-v1
+stage_image_tar radar-control-v1
 cp -f "$ART_DIR/"vendor_claim.spdx.json "$LAB_DIR/"
 cp -f "$ART_DIR/"SBOM_Minimum_Elements.md "$LAB_DIR/"
 cp -f "$BUNDLE_DIR/expected_outputs.json" "$LAB_DIR/"

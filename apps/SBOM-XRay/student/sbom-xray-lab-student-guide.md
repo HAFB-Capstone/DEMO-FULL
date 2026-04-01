@@ -97,6 +97,8 @@ On your lab VM you will have:
 
 Everything is local; **no internet access is required or assumed**.
 
+If you obtained the lab from the demo repository, container images may be stored under `artifacts/` as **`flight-path-v1.tar.gz`** and **`radar-control-v1.tar.gz`**. Run **`install-module1-offline.sh`** once from the bundle root; it decompresses them into **`flight-path-v1.tar`** and **`radar-control-v1.tar`** in your lab directory for the steps below.
+
 ---
 
 ### 5. Learning Objectives
