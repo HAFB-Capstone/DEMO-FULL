@@ -1,108 +1,98 @@
 # HAFB Range Control
 
-`hafb-range-control` is the control-plane repo for the Hill AFB capstone lab.
+`hafb-range-control` is the Ansible automation repository for the Hill AFB capstone lab.
 
-Its current MVP is intentionally small:
+It performs one supported workflow:
 
-1. deploy `SBOM-Training-Module` Module 1 with Ansible
-2. validate the install on a Linux target
-3. generate a simple readiness score report
+1. deploy `SBOM-Training-Module` Module 1 (`sbom-xray-lab`) to a Linux analysis system with Ansible
+2. validate the installed module using the module's offline validator
 
-This repo does not own the training content itself. The content and offline installer live in `SBOM-Training-Module`. This repo is the automation and scoring layer around that content.
+This repository is the control layer around the offline training bundle. It does not contain the training content itself. The content and installer come from `SBOM-Training-Module`.
 
-If you need the plain-English version first, start with [docs/how-it-works.md](docs/how-it-works.md).
+Scoring and operator reporting are handled outside this repository.
 
-## What this repo proves
+If you need the plain-English walkthrough, start with [docs/how-it-works.md](docs/how-it-works.md).
 
-The capstone proof is straightforward:
+## What This Repository Does
 
-- one central repo can automate one air-gapped module end to end
-- deployment can be validated consistently
-- the result can be turned into a readiness score
-- the same control repo can later expand to more modules and a dashboard
+This repository is responsible for:
 
-## Current scope
+- Ansible-based deployment of the Module 1 offline bundle
+- execution of the module's validation script on the target system
+- staging the bundle on the target host
+- running the module's installer and validator in a repeatable way
 
-Right now this repo supports one target only:
+This repository does not:
 
-- `SBOM-Training-Module` Module 1 (`sbom-xray-lab`)
+- rebuild the Module 1 bundle
+- host the student lab content source
+- require internet access during runtime
+- own scoring logic or dashboard logic
 
-The runtime target for deploy and validate is a Linux VM such as `ubuntuBlue`. macOS is fine for writing the repo, reading docs, and running limited checks, but the actual module installer is Linux-targeted.
+## Supported Target
 
-## How it works
+The supported runtime target is a Linux analysis VM such as `ubuntuBlue`.
 
-The end-to-end flow is:
+The repository can be run in two ways:
 
-1. Ansible reads an extracted Module 1 offline bundle from the controller machine.
-2. The `sbom_module1` role copies that bundle to the target VM.
-3. The role runs the module's own installer: `install-module1-offline.sh`.
-4. The role runs the module's own validator: `validate-module1-offline.sh`.
-5. `scoring/score_module1.py` checks the installed lab and writes score reports to `reports/`.
+- directly on the Linux target with `inventories/localhost.yml`
+- remotely from a control VM over SSH using a remote inventory
 
-In other words: this repo does not rebuild Module 1. It automates the existing offline bundle and scores the result.
+macOS is suitable for editing the repo and running limited checks, but the actual Module 1 installer and validator are Linux-targeted.
 
-## Repo layout
+## Execution Flow
 
-```text
-hafb-range-control/
-├── README.md                     # Short project overview and usage
-├── Makefile                      # Simple wrappers for deploy, validate, and score
-├── ansible.cfg                   # Default Ansible configuration
-├── docs/                         # Architecture, runbooks, and walkthrough docs
-├── inventories/                  # Localhost and remote inventory files
-├── playbooks/                    # Top-level deployment, validation, and connectivity playbooks
-├── reports/                      # Generated score outputs
-├── roles/sbom_module1/           # The Ansible role for SBOM Module 1
-├── scoring/                      # Readiness scoring script and weights
-└── scripts/                      # Convenience wrappers around Ansible and scoring
-```
+The operational flow is:
 
-## Important files
+1. the controller machine has an extracted Module 1 offline bundle available on disk
+2. `scripts/deploy.sh` runs `playbooks/deploy_sbom_module1.yml`
+3. the `sbom_module1` role verifies the bundle on the controller and copies it to the target
+4. the role normalizes expected file names, patches the staged installer for user-space install mode, and runs `install-module1-offline.sh`
+5. `scripts/validate.sh` runs `playbooks/validate_sbom_module1.yml`
+6. the role runs `validate-module1-offline.sh` on the target and stores a validation log
 
-- `scripts/deploy.sh`: runs the deploy playbook
-- `scripts/validate.sh`: runs the validation playbook
-- `scripts/score.sh`: runs the Python scoring script
-- `playbooks/deploy_sbom_module1.yml`: deploy entrypoint
+## Main Files
+
+- `scripts/deploy.sh`: deploy wrapper for Ansible
+- `scripts/validate.sh`: validation wrapper for Ansible
+- `scripts/ping_targets.sh`: connectivity test for remote inventories
+- `playbooks/deploy_sbom_module1.yml`: deployment entrypoint
 - `playbooks/validate_sbom_module1.yml`: validation entrypoint
-- `roles/sbom_module1/tasks/deploy.yml`: bundle staging and install logic
-- `roles/sbom_module1/tasks/validate.yml`: validation logic
-- `scoring/score_module1.py`: readiness scoring logic
+- `roles/sbom_module1/tasks/deploy.yml`: bundle staging and installer execution
+- `roles/sbom_module1/tasks/validate.yml`: validation execution and logging
 
-## Default paths and variables
+## Configuration
 
-By default, the repo looks for the extracted offline bundle at:
+By default, the repository looks for the extracted offline bundle at:
 
 ```text
 /Users/taylorpreslar/capstone/SBOM-Training-Module/deploy/releases/Module1-offline-bundle-sbom-xray-2026-03-25_004519
 ```
 
-Override that path when needed:
+Override that path with:
 
 ```bash
 export SBOM_BUNDLE_SOURCE_DIR=/path/to/Module1-offline-bundle-sbom-xray
 ```
 
-Other important defaults:
+Important defaults:
 
 - target staging directory: `~/hafb-staging/module1-offline-bundle`
 - installed lab directory: `~/labs/sbom-Module1-sbom-xray`
-- score reports: `reports/module1-score-latest.json` and `reports/module1-score-latest.md`
 
 ## Inventories
 
-The repo ships with:
+The repository includes:
 
-- `inventories/localhost.yml`: for running directly on the Linux target VM
-- `inventories/ubuntuBlue.example.yml`: example single-target remote inventory
-- `inventories/proxmox-lab.example.yml`: example multi-VM Proxmox inventory
+- `inventories/localhost.yml`: local execution on the Linux target
+- `inventories/ubuntuBlue.example.yml`: example remote inventory for one analysis host
+- `inventories/proxmox-lab.example.yml`: example remote inventory for a multi-VM lab
 
-Even though `ansible.cfg` defaults to `inventories/localhost.yml`, the wrapper scripts still require an explicit `-i` inventory argument. That guard is intentional so you do not accidentally deploy to the wrong machine.
+Although `ansible.cfg` defines a default inventory, the wrapper scripts still require an explicit `-i` inventory argument. This is intentional so deployment and validation always target the intended system.
 
-## Quick start
+## Commands
 
-### Recommended first proof: run directly on `ubuntuBlue`
-
-This is the simplest and cleanest capstone path.
+### Run Directly On The Linux Target
 
 ```bash
 cd ~/hafb-range-control
@@ -110,18 +100,9 @@ export SBOM_BUNDLE_SOURCE_DIR=/tmp/Module1-offline-bundle-sbom-xray-2026-03-25_0
 
 ./scripts/deploy.sh -i inventories/localhost.yml
 ./scripts/validate.sh -i inventories/localhost.yml
-./scripts/score.sh
 ```
 
-This assumes:
-
-- the repo has been copied to `ubuntuBlue`
-- the Module 1 bundle is already staged in `/tmp`
-- Ansible is installed on `ubuntuBlue`
-
-### Next step: run from a dedicated Control VM
-
-After the localhost proof works, move to the intended architecture:
+### Run From A Control VM
 
 ```bash
 cd ~/hafb-range-control
@@ -135,51 +116,42 @@ export SBOM_BUNDLE_SOURCE_DIR=~/bundles/Module1-offline-bundle-sbom-xray-2026-03
 ./scripts/validate.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
 ```
 
-In that model, the extracted bundle must exist on the controller VM first. Ansible copies it from the controller to the target.
+In the remote-controller model, the extracted bundle must exist on the controller VM first. Ansible copies it from the controller to the target.
 
-## Score output
+## Generated Artifacts
 
-The scoring script checks:
+Additional operational evidence written by deployment and validation includes:
 
-- bundle source exists
-- installed lab directory exists
-- required student artifacts exist
-- instructor materials exist
-- `syft` is on `PATH`
-- `jq` is on `PATH`
-- `~/labs/sbom-xray` compatibility symlink exists
-- the official Module 1 validator passes
+- `~/labs/sbom-Module1-sbom-xray/.hafb_range_control_installed`
+- `~/labs/sbom-Module1-sbom-xray/.hafb_range_control_last_validate.txt`
 
-It writes:
-
-- `reports/module1-score-latest.json`
-- `reports/module1-score-latest.md`
-
-## Make targets
-
-You can use the shell wrappers directly, or use `make`:
+## Make Targets
 
 ```bash
 make help
 make deploy INVENTORY=inventories/localhost.yml
 make validate INVENTORY=inventories/localhost.yml
-make score
+make demo INVENTORY=inventories/localhost.yml
+```
+
+## Repository Layout
+
+```text
+hafb-range-control/
+├── README.md
+├── Makefile
+├── ansible.cfg
+├── docs/
+├── inventories/
+├── playbooks/
+├── roles/sbom_module1/
+└── scripts/
 ```
 
 ## Documentation
 
-- [docs/how-it-works.md](docs/how-it-works.md): plain-English project walkthrough
-- [docs/demo-runbook.md](docs/demo-runbook.md): capstone demo sequence
-- [docs/architecture.md](docs/architecture.md): current and future architecture
-- [docs/control-vm-rollout.md](docs/control-vm-rollout.md): Control VM setup plan
+- [docs/how-it-works.md](docs/how-it-works.md): plain-English walkthrough
+- [docs/demo-runbook.md](docs/demo-runbook.md): demo command sequence and talking points
+- [docs/architecture.md](docs/architecture.md): architecture and operating model
+- [docs/control-vm-rollout.md](docs/control-vm-rollout.md): control VM setup guidance
 - [docs/proxmox-testing.md](docs/proxmox-testing.md): Proxmox testing notes
-- [docs/mvp.md](docs/mvp.md): short MVP definition
-
-## Capstone explanation
-
-The cleanest way to describe this repo is:
-
-- `SBOM-Training-Module` owns the training content and installer
-- `hafb-range-control` owns automation, validation orchestration, and scoring
-- the current MVP proves the pattern on one module first
-- later phases can add more modules, more targets, and a dashboard

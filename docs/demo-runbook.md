@@ -6,9 +6,8 @@ Demonstrate that one central repo can:
 
 1. deploy one training module with Ansible
 2. validate it
-3. score its readiness
 
-This runbook is for the current MVP, which is automation-first.
+This runbook is for the current supported implementation, which is automation-first.
 
 ## Target note
 
@@ -16,7 +15,7 @@ Run the actual deploy and validate playbooks on `ubuntuBlue` or another Linux an
 
 The Control VM architecture is the next stage. This runbook keeps the first proof smaller by validating the role directly on a Linux target before introducing remote orchestration.
 
-## Recommended MVP demo commands
+## Recommended demo commands
 
 ```bash
 cd ~/hafb-range-control
@@ -25,26 +24,24 @@ export SBOM_BUNDLE_SOURCE_DIR=/tmp/Module1-offline-bundle-sbom-xray-2026-03-25_0
 
 ./scripts/deploy.sh -i inventories/localhost.yml
 ./scripts/validate.sh -i inventories/localhost.yml
-./scripts/score.sh
 ```
 
 ## What to say
 
-- This repo is the automation control-plane MVP.
-- We are proving the pattern on one module, not the whole range.
+- This repo is the automation control-plane for the Module 1 workflow.
+- This run shows one complete supported workflow, not every lab service.
 - The first objective is automation with Ansible.
-- The second objective, a Wazuh-backed scoring dashboard, comes later.
 - Ansible deploys the SBOM Module 1 offline bundle using the module's own installer.
 - Validation proves the install worked.
-- Scoring turns that validation state into a simple readiness score.
+- Scoring is handled outside this repository.
 
 ## What success looks like
 
 - Ansible reports the deploy completed.
 - Ansible validation passes.
-- The score report lands in `reports/` and shows a high or perfect readiness score.
+- The validation log is written on the target system.
 
-## After the MVP
+## After This Run
 
 Once this works on `ubuntuBlue`, the next logical extension is:
 

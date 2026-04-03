@@ -10,7 +10,7 @@ Based on the current lab state:
 - Wazuh appears to be installed on `ubuntuBlue`
 - Module bundles appear to already be staged on `ubuntuBlue` under `/tmp`
 
-For the first MVP test, treat `ubuntuBlue` as both:
+For the first deployment test, treat `ubuntuBlue` as both:
 
 - the Ansible execution node
 - the module install target
@@ -137,17 +137,17 @@ What this should do:
 - confirm required files are present
 - confirm `syft` and `jq` are usable
 
-## Step 8: run the readiness score
+## Step 8: review validation evidence
 
 ```bash
-./scripts/score.sh
-cat reports/module1-score-latest.md
+cat ~/labs/sbom-Module1-sbom-xray/.hafb_range_control_last_validate.txt
+cat ~/labs/sbom-Module1-sbom-xray/.hafb_range_control_installed
 ```
 
 What you want to see:
 
-- a high or perfect score
-- all readiness checks marked `PASS`
+- validation output showing the official validator passed
+- install metadata showing the bundle source and lab path used by automation
 
 ## Step 9: manually verify the installed module
 
@@ -176,7 +176,7 @@ Save or screenshot:
 - `ansible-playbook --version`
 - successful `./scripts/deploy.sh`
 - successful `./scripts/validate.sh`
-- `reports/module1-score-latest.md`
+- `~/labs/sbom-Module1-sbom-xray/.hafb_range_control_last_validate.txt`
 - `ls -lah ~/labs/sbom-xray`
 
 That gives you a clean story:
@@ -185,7 +185,6 @@ That gives you a clean story:
 - one Ansible role
 - one deployed module
 - one validation path
-- one readiness score
 
 ## After this first proof
 
@@ -195,4 +194,4 @@ Only after the `ubuntuBlue` localhost flow works cleanly should you add:
 - remote inventories
 - bastion-based SSH routing if needed
 - more modules
-- a real scoring dashboard fed by Wazuh alerts and service checks
+- any external scoring or dashboard integration

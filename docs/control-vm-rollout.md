@@ -6,10 +6,8 @@ Create a dedicated Linux VM on Proxmox whose only job is:
 
 - host `hafb-range-control`
 - run Ansible
-- store reports
-- later host the scoring dashboard
 
-This VM becomes the automation and scoring control node for the lab.
+This VM becomes the automation control node for the lab.
 
 ## Recommended VM role
 
@@ -178,17 +176,14 @@ What success looks like:
   - `flight-path components: 3362`
   - `radar-control components: 3351`
 
-### 11. Run the readiness score for the current MVP
+### 11. Review validation evidence
 
-The current `score.sh` checks local filesystem paths and local tool availability. That means it is still easiest to run on `ubuntuBlue` for the first MVP proof.
-
-If the repo is also present on `ubuntuBlue`, use:
+Once validation succeeds, review the evidence written by the automation on `ubuntuBlue`:
 
 ```bash
-ssh student@ubuntuBlue 'cd ~/hafb-range-control && ./scripts/score.sh'
+ssh student@ubuntuBlue 'cat ~/labs/sbom-Module1-sbom-xray/.hafb_range_control_last_validate.txt'
+ssh student@ubuntuBlue 'cat ~/labs/sbom-Module1-sbom-xray/.hafb_range_control_installed'
 ```
-
-Later, that readiness score should be moved into an Ansible-collected report or the future Control-VM dashboard.
 
 ### 12. Reset strategy for milestone 1
 
@@ -210,7 +205,6 @@ For the first Control VM milestone, prove these things only:
 - Ansible can run from the Control VM
 - Module 1 can be deployed to `ubuntuBlue`
 - Module 1 can be validated
-- the readiness score can be generated for the deployed module
 
 That is enough for the first serious proof-of-concept.
 
@@ -220,5 +214,4 @@ Once the Control VM path works:
 
 - add a second module or service
 - add `ubuntuVictim` to inventory
-- add the first Wazuh ingestion endpoint for the future dashboard
-- add a simple web UI for score and service state
+- integrate with external scoring or visibility tooling if needed
