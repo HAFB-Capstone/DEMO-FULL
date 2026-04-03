@@ -20,6 +20,8 @@ COPY set_as_hec_receiver.yml /opt/ansible/roles/splunk_common/tasks/set_as_hec_r
 RUN mkdir -p /opt/splunk/etc/system/local && \
     # Disable local log monitoring
     printf "[monitor://\$SPLUNK_HOME/var/log/splunk]\ndisabled = 1\n[monitor://\$SPLUNK_HOME/var/log/introspection]\ndisabled = 1\n" > /opt/splunk/etc/system/local/inputs.conf && \
+    # Enable receiver on port 9997
+    printf "\n[splunktcp://9997]\ndisabled = 0\n" >> /opt/splunk/etc/system/local/inputs.conf && \
     # Disable internal resource tracking (Introspection)
     printf "[introspection:resource_usage]\ndisabled = 1\n[introspection:disk_objects]\ndisabled = 1\n" > /opt/splunk/etc/system/local/telemetry.conf && \
     # UI tweaks
