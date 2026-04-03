@@ -25,7 +25,7 @@ services:
     volumes:
       - splunk_etc:/opt/splunk/etc
       - splunk_var:/opt/splunk/var
-      - ./apps/splunk/analytics/rules:/opt/splunk/etc/apps/custom_rules:ro
+      - ./apps/splunk/analytics/rules:/opt/splunk/etc/apps/custom_rules
       - ./apps/splunk/analytics/dashboards:/opt/splunk/etc/apps/search/local/data/ui/views:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/en-US/account/login"]
