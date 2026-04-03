@@ -1,230 +1,175 @@
 # HAFB Range Control
 
-`hafb-range-control` is the Ansible automation repository for the Hill AFB capstone lab.
+`hafb-range-control` is the central Ansible automation repository for the Hill AFB range environment.
 
-It is intended to be the central automation layer for:
+Its purpose is to automate controller-side operations across the lab VMs, including:
 
-- training modules
-- vulnerable services or target workloads
-- supporting host configuration tasks
+- provisioning training modules
+- provisioning vulnerable services or target workloads
+- validating deployed systems after automation runs
+- orchestrating reset workflows when a target-specific reset playbook exists
+- maintaining a single inventory and execution model for the range
 
-The current reference implementation in this repository is:
+This repository is intentionally focused on automation. It does not own scoring, dashboards, or the source content of the individual lab modules.
 
-1. deploy `SBOM-Training-Module` Module 1 (`sbom-xray-lab`) to a Linux analysis system with Ansible
-2. validate the installed module using the module's offline validator
+## Repository Purpose
 
-This repository is the control layer around the offline training bundle. It does not contain the training content itself. The content and installer come from `SBOM-Training-Module`.
+The repository is designed to solve one problem consistently:
 
-Scoring and operator reporting are handled outside this repository.
+use a single Ansible control repo to manage repeatable lifecycle operations across multiple VMs.
 
-If you need the plain-English walkthrough, start with [docs/how-it-works.md](docs/how-it-works.md).
+Those lifecycle operations are:
 
-## What This Repository Does
+1. provision
+2. validate
+3. reset when required
 
-This repository is responsible for:
+In practice, that means this repo is where you define:
 
-- managing inventories, playbooks, and roles for lab automation
-- staging deployment artifacts on target hosts
-- running repeatable deployment steps on managed systems
-- running validation steps after deployment
-- serving as the controller-side automation repo for additional modules or vulnerable services
+- which systems exist in the range
+- which systems belong to which automation groups
+- which playbooks run for each target type
+- which roles implement deploy, validate, and reset behavior
 
-This repository does not:
+## Automation Model
 
-- rebuild module bundles
-- host the student lab content source
-- require internet access during runtime
-- own scoring logic or dashboard logic
+The repository uses a simple Ansible pattern:
 
-## Repository Model
+1. `inventories/` defines hosts and host groups
+2. `playbooks/` defines top-level automation entrypoints
+3. `roles/` contains the actual deployment, validation, and optional reset logic
+4. `scripts/` provides consistent wrappers around `ansible-playbook`
 
-The repository is organized around a reusable Ansible pattern:
+That pattern is generic enough to support:
 
-1. inventory files define target systems and connection details
-2. playbooks select a target group and a role
-3. roles implement deployment and validation behavior
-4. shell wrappers enforce explicit inventories and consistent execution
+- training modules on analysis hosts
+- vulnerable applications on victim hosts
+- host configuration and support tooling on any managed VM
 
-That pattern is reusable whether the target is:
+## Current Lab Inventory
 
-- an offline training module
-- a vulnerable application stack
-- a host configuration task on `ubuntuBlue`, `ubuntuVictim`, or another managed VM
+The active Proxmox inventory is [proxmox-lab.yml](/Users/taylorpreslar/capstone/hafb-range-control/inventories/proxmox-lab.yml#L1).
 
-## Current Reference Implementation
+It currently maps:
 
-The current implemented example is `SBOM-Training-Module` Module 1.
+- `ubuntuBlue` in the `analysis` group at `192.168.86.37` with user `hafb`
+- `ubuntuVictim` in the `victim` group at `192.168.86.32` with user `hafb`
+- `kaliRed` in the `red` group at `192.168.86.27` with user `kali`
 
-That implementation uses:
+`kaliRed` is a Kali system, not Ubuntu. Its password is intentionally not stored in the repository. Use SSH keys or `-k` / `--ask-pass` when password authentication is required.
 
-- `playbooks/deploy_sbom_module1.yml`
-- `playbooks/validate_sbom_module1.yml`
-- `roles/sbom_module1/`
+The local-only inventory in [localhost.yml](/Users/taylorpreslar/capstone/hafb-range-control/inventories/localhost.yml#L1) is useful when automation is run directly on a target VM.
 
-The current runtime target is a Linux analysis VM such as `ubuntuBlue`.
+## Current Implemented Example
 
-The repository can still be run in two ways:
+The current implemented example in this repository is the `sbom_module1` role.
 
-- directly on the Linux target with `inventories/localhost.yml`
-- remotely from a control VM over SSH using a remote inventory
+It demonstrates the repository pattern by:
 
-macOS is suitable for editing the repo and running limited checks, but the actual Module 1 installer and validator are Linux-targeted.
+- staging an offline training bundle from the controller to the target
+- running the target module's installer
+- running the target module's validator
+- writing evidence files on the managed host
 
-## Execution Flow
+That implementation is an example of the automation pattern, not the limit of the repository.
 
-The generic control flow is:
+## How The Repository Is Used
 
-1. the controller machine has the deployment artifacts or source files needed for a target
-2. a wrapper script or `ansible-playbook` command launches the correct playbook
-3. the playbook applies a role to the intended inventory group
-4. the role performs deployment tasks on the target
-5. the role performs validation tasks on the target
+### Connectivity
 
-The current Module 1 implementation follows that pattern like this:
-
-1. the controller machine has an extracted Module 1 offline bundle available on disk
-2. `scripts/deploy.sh` runs `playbooks/deploy_sbom_module1.yml`
-3. the `sbom_module1` role verifies the bundle on the controller and copies it to the target
-4. the role normalizes expected file names, patches the staged installer for user-space install mode, and runs `install-module1-offline.sh`
-5. `scripts/validate.sh` runs `playbooks/validate_sbom_module1.yml`
-6. the role runs `validate-module1-offline.sh` on the target and stores a validation log
-
-## Main Files
-
-- `scripts/deploy.sh`: deploy wrapper for Ansible
-- `scripts/validate.sh`: validation wrapper for Ansible
-- `scripts/ping_targets.sh`: connectivity test for remote inventories
-- `inventories/`: host definitions and connection settings
-- `playbooks/`: top-level automation entrypoints
-- `roles/`: reusable automation units for modules, services, or host tasks
-- `playbooks/deploy_sbom_module1.yml`: deployment entrypoint
-- `playbooks/validate_sbom_module1.yml`: validation entrypoint
-- `roles/sbom_module1/tasks/deploy.yml`: bundle staging and installer execution
-- `roles/sbom_module1/tasks/validate.yml`: validation execution and logging
-
-## Configuration
-
-By default, the repository looks for the extracted offline bundle at:
-
-```text
-/Users/taylorpreslar/capstone/SBOM-Training-Module/deploy/releases/Module1-offline-bundle-sbom-xray-2026-03-25_004519
-```
-
-Override that path with:
+Use the connectivity playbook to confirm SSH reachability and fact gathering across the lab:
 
 ```bash
-export SBOM_BUNDLE_SOURCE_DIR=/path/to/Module1-offline-bundle-sbom-xray
+./scripts/ping_targets.sh -i inventories/proxmox-lab.yml
+./scripts/ping_targets.sh -i inventories/proxmox-lab.yml --limit ubuntuVictim
 ```
 
-Important defaults:
+### Provisioning
 
-- target staging directory: `~/hafb-staging/module1-offline-bundle`
-- installed lab directory: `~/labs/sbom-Module1-sbom-xray`
+Provisioning is implemented by target-specific deploy playbooks.
 
-These defaults belong to the current `sbom_module1` role. Additional roles can define their own defaults and target paths.
-
-## Inventories
-
-The repository includes:
-
-- `inventories/localhost.yml`: local execution on the Linux target
-- `inventories/proxmox-lab.yml`: current multi-VM lab inventory for the Proxmox environment
-
-Although `ansible.cfg` defines a default inventory, the wrapper scripts still require an explicit `-i` inventory argument. This is intentional so deployment and validation always target the intended system.
-
-As the repository grows, inventories can map different host groups for different automation categories, such as:
-
-- `analysis`: training module targets
-- `victim`: vulnerable service targets
-- `red`: operator or red-team systems
-- additional custom groups for service-specific automation
-
-The current `inventories/proxmox-lab.yml` maps:
-
-- `ubuntuBlue` at `192.168.86.37` with user `hafb`
-- `ubuntuVictim` at `192.168.86.32` with user `hafb`
-- `kaliRed` at `192.168.86.27` with user `kali`
-
-For `kaliRed`, use SSH keys or `-k`/`--ask-pass` when needed. The password is not stored in the repository.
-
-## Commands
-
-### Run Directly On The Linux Target
+The current example is:
 
 ```bash
-cd ~/hafb-range-control
-export SBOM_BUNDLE_SOURCE_DIR=/tmp/Module1-offline-bundle-sbom-xray-2026-03-25_004519
-
-./scripts/deploy.sh -i inventories/localhost.yml
-./scripts/validate.sh -i inventories/localhost.yml
-```
-
-### Run From A Control VM
-
-```bash
-cd ~/hafb-range-control
-$EDITOR inventories/proxmox-lab.yml
-
-./scripts/ping_targets.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
-export SBOM_BUNDLE_SOURCE_DIR=~/bundles/Module1-offline-bundle-sbom-xray-2026-03-25_004519
-
 ./scripts/deploy.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
+```
+
+Future vulnerable-service roles would follow the same pattern, for example:
+
+```bash
+./scripts/run_playbook.sh playbooks/deploy_vulnerable_webapp.yml -i inventories/proxmox-lab.yml --limit ubuntuVictim
+```
+
+### Validation
+
+Validation is implemented by target-specific validate playbooks.
+
+The current example is:
+
+```bash
 ./scripts/validate.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
 ```
 
-In the remote-controller model, the extracted bundle must exist on the controller VM first. Ansible copies it from the controller to the target.
-
-## Extending The Repository
-
-This repository is designed to support more than the current Module 1 example.
-
-Typical extension patterns are:
-
-- add another training module role that stages a different offline bundle and runs that module's validator
-- add a vulnerable service role that deploys an application, configuration, or container stack onto `ubuntuVictim`
-- add a host-configuration role that installs tools, copies files, or enables services on a managed VM
-
-For example, a future vulnerable-service role could:
-
-1. copy application files or a Compose stack to `ubuntuVictim`
-2. install dependencies from approved internal sources
-3. start the vulnerable service
-4. run a validation step such as an HTTP health check, open-port check, or service status check
-
-For example, a future training-module role could:
-
-1. stage a different offline lab bundle on `ubuntuBlue`
-2. run the module installer
-3. validate expected files, tools, or directories
-
-The recommended implementation pattern for any new automation target is:
-
-1. create a new role under `roles/<name>/`
-2. put role-specific defaults in `defaults/main.yml`
-3. separate deployment and validation tasks under `tasks/deploy.yml` and `tasks/validate.yml`
-4. create top-level playbooks for that role
-5. add or reuse inventory groups for the target systems
-6. add a wrapper script only if the new target needs a dedicated entrypoint
-
-## Generated Artifacts
-
-Additional operational evidence written by deployment and validation includes:
-
-- `~/labs/sbom-Module1-sbom-xray/.hafb_range_control_installed`
-- `~/labs/sbom-Module1-sbom-xray/.hafb_range_control_last_validate.txt`
-
-Those files are specific to the current Module 1 example. Future roles can emit their own role-specific evidence files or logs.
-
-## Make Targets
+The same command pattern applies to future roles:
 
 ```bash
-make help
-make deploy INVENTORY=inventories/localhost.yml
-make validate INVENTORY=inventories/localhost.yml
-make demo INVENTORY=inventories/localhost.yml
+./scripts/run_playbook.sh playbooks/validate_vulnerable_webapp.yml -i inventories/proxmox-lab.yml --limit ubuntuVictim
 ```
 
-## Repository Layout
+### Reset
+
+Reset is a supported automation pattern for this repository, even though no generic reset playbook is shipped yet.
+
+There are two practical reset models:
+
+- service-level reset: a role-specific reset playbook removes files, restores configuration, reseeds data, or restarts services
+- VM-level reset: the environment is reverted through a Proxmox snapshot or another infrastructure-level rollback mechanism
+
+When a target needs service-level reset automation, add a `reset` playbook and invoke it through the generic runner:
+
+```bash
+./scripts/run_playbook.sh playbooks/reset_vulnerable_webapp.yml -i inventories/proxmox-lab.yml --limit ubuntuVictim
+```
+
+This is the recommended pattern for vulnerable services that need repeatable cleanup between exercises.
+
+## Commands
+
+The repository currently provides these operator entrypoints:
+
+- [deploy.sh](/Users/taylorpreslar/capstone/hafb-range-control/scripts/deploy.sh#L1): runs the current deploy playbook
+- [validate.sh](/Users/taylorpreslar/capstone/hafb-range-control/scripts/validate.sh#L1): runs the current validate playbook
+- [ping_targets.sh](/Users/taylorpreslar/capstone/hafb-range-control/scripts/ping_targets.sh#L1): checks managed-host connectivity
+- [run_playbook.sh](/Users/taylorpreslar/capstone/hafb-range-control/scripts/run_playbook.sh#L1): runs any playbook in the repo with the same inventory safety guard
+
+The wrappers require an explicit `-i` inventory argument. This avoids accidentally running automation against the controller because `ansible.cfg` defaults to `inventories/localhost.yml`.
+
+## Adding New Automation Targets
+
+To add a new training module, vulnerable service, or host task:
+
+1. add or update the relevant host group in `inventories/proxmox-lab.yml`
+2. create a new role under `roles/<target_name>/`
+3. keep role variables in `defaults/main.yml`
+4. separate lifecycle tasks into `tasks/deploy.yml`, `tasks/validate.yml`, and `tasks/reset.yml` when reset is needed
+5. create top-level playbooks such as `deploy_<target>.yml`, `validate_<target>.yml`, and `reset_<target>.yml`
+6. run those playbooks with `scripts/run_playbook.sh`
+
+This keeps each automation target isolated and makes it possible to provision or reset one service without affecting unrelated systems.
+
+## Vulnerable-Service Use Case
+
+For a vulnerable service on `ubuntuVictim`, this repository would typically be used to:
+
+1. copy application code, configuration, or a container stack to `ubuntuVictim`
+2. install dependencies from approved internal sources
+3. start the vulnerable workload
+4. validate service health with `systemctl`, container checks, HTTP checks, or port checks
+5. reset the workload by removing data, restoring baseline config, or re-running a reset playbook
+
+That is the same lifecycle model the repository already uses for module automation. The target changes, but the control pattern stays the same.
+
+## Current Repository Layout
 
 ```text
 hafb-range-control/
@@ -238,11 +183,7 @@ hafb-range-control/
 └── scripts/
 ```
 
-## Documentation
+## Remaining Documentation
 
-- [docs/how-it-works.md](docs/how-it-works.md): plain-English walkthrough
-- [docs/extending-the-repo.md](docs/extending-the-repo.md): how to add new modules or vulnerable services
-- [docs/demo-runbook.md](docs/demo-runbook.md): demo command sequence and talking points
-- [docs/architecture.md](docs/architecture.md): architecture and operating model
-- [docs/control-vm-rollout.md](docs/control-vm-rollout.md): control VM setup guidance
-- [docs/proxmox-testing.md](docs/proxmox-testing.md): Proxmox testing notes
+- [architecture.md](/Users/taylorpreslar/capstone/hafb-range-control/docs/architecture.md#L1): environment and control-plane design
+- [extending-the-repo.md](/Users/taylorpreslar/capstone/hafb-range-control/docs/extending-the-repo.md#L1): patterns for adding new modules, services, and reset playbooks

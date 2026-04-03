@@ -24,9 +24,9 @@ require_explicit_inventory() {
 
   cat >&2 <<EOF
 Refusing to run without an explicit Ansible inventory.
-This repo defaults to inventories/localhost.yml, which can accidentally deploy Module 1 on the controller.
+This repo defaults to inventories/localhost.yml, which can accidentally run deployment on the controller.
 Use:
-  ./scripts/$SCRIPT_NAME -i inventories/proxmox-lab.yml --limit ubuntuBlue
+  ./scripts/$SCRIPT_NAME -i inventories/proxmox-lab.yml --limit <target>
 For an intentional localhost run, use:
   ./scripts/$SCRIPT_NAME -i inventories/localhost.yml
 To bypass this guard temporarily, set:

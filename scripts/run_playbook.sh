@@ -24,13 +24,13 @@ require_explicit_inventory() {
 
   cat >&2 <<EOF
 Refusing to run without an explicit Ansible inventory.
-This repo defaults to inventories/localhost.yml, which can accidentally run validation on the controller instead of the target VM.
+This repo defaults to inventories/localhost.yml, which can accidentally target the controller.
 Use:
-  ./scripts/$SCRIPT_NAME -i inventories/proxmox-lab.yml --limit <target>
+  ./scripts/$SCRIPT_NAME playbooks/<name>.yml -i inventories/proxmox-lab.yml --limit <target>
 For an intentional localhost run, use:
-  ./scripts/$SCRIPT_NAME -i inventories/localhost.yml
+  ./scripts/$SCRIPT_NAME playbooks/<name>.yml -i inventories/localhost.yml
 To bypass this guard temporarily, set:
-  HAFB_ALLOW_LOCALHOST_INVENTORY=1 ./scripts/$SCRIPT_NAME
+  HAFB_ALLOW_LOCALHOST_INVENTORY=1 ./scripts/$SCRIPT_NAME playbooks/<name>.yml
 EOF
   exit 2
 }
@@ -40,7 +40,29 @@ if ! command -v ansible-playbook >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ $# -lt 1 ]]; then
+  cat >&2 <<EOF
+Usage:
+  ./scripts/$SCRIPT_NAME playbooks/<name>.yml -i inventories/proxmox-lab.yml --limit <target>
+EOF
+  exit 2
+fi
+
+playbook_arg="$1"
+shift
+
+if [[ "$playbook_arg" = /* ]]; then
+  playbook_path="$playbook_arg"
+else
+  playbook_path="$ROOT_DIR/$playbook_arg"
+fi
+
+if [[ ! -f "$playbook_path" ]]; then
+  echo "Playbook not found: $playbook_arg" >&2
+  exit 2
+fi
+
 require_explicit_inventory "$@"
 
 cd "$ROOT_DIR"
-ansible-playbook playbooks/validate_sbom_module1.yml "$@"
+ansible-playbook "$playbook_path" "$@"

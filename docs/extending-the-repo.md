@@ -1,12 +1,12 @@
 # Extending The Repository
 
-This document explains how `hafb-range-control` can be expanded beyond the current `sbom_module1` example.
+This document explains how to add new automation targets to `hafb-range-control`.
 
 ## Purpose
 
 The repository is designed to be a reusable Ansible control plane, not a one-off automation script for a single lab.
 
-The current implementation proves the pattern with one training module, but the same layout can support:
+The same layout can support:
 
 - additional training modules
 - vulnerable services
@@ -21,8 +21,7 @@ Every new automation target should follow the same basic structure:
 2. playbook selects the role and execution mode
 3. role performs deployment tasks
 4. role performs validation tasks
-
-The current `sbom_module1` role already follows this pattern.
+5. role performs reset tasks when the target needs repeatable rollback or cleanup
 
 ## Adding another training module
 
@@ -43,10 +42,12 @@ roles/
     tasks/main.yml
     tasks/deploy.yml
     tasks/validate.yml
+    tasks/reset.yml
 
 playbooks/
   deploy_module2_lab.yml
   validate_module2_lab.yml
+  reset_module2_lab.yml
 ```
 
 ## Adding a vulnerable service
@@ -58,6 +59,7 @@ A vulnerable-service role would usually:
 3. install required dependencies from approved internal sources
 4. start the service
 5. validate that the service is reachable or configured correctly
+6. reset the service to a known baseline when a new exercise run begins
 
 Validation examples:
 
@@ -76,10 +78,12 @@ roles/
     tasks/main.yml
     tasks/deploy.yml
     tasks/validate.yml
+    tasks/reset.yml
 
 playbooks/
   deploy_vulnerable_webapp.yml
   validate_vulnerable_webapp.yml
+  reset_vulnerable_webapp.yml
 ```
 
 ## Adding host configuration tasks
@@ -96,15 +100,18 @@ This repo can also manage:
 
 For those roles, deployment may be the main focus, while validation confirms the final system state.
 
+If the task changes system state in a way that must be cleaned up between runs, add a reset playbook for it.
+
 ## Recommended standards for new roles
 
 Keep each new role consistent with the existing pattern:
 
 - use `defaults/main.yml` for role-specific variables
-- keep deploy and validate tasks separate
+- keep deploy, validate, and reset tasks separate
 - make validation explicit instead of relying on assumptions
 - write role-specific evidence files or logs when useful
 - avoid mixing unrelated automation targets into one role
+- keep reset logic idempotent where practical
 
 ## Inventory design
 
@@ -132,6 +139,22 @@ Avoid vague names that hide the role's actual responsibility.
 
 ## Practical rule
 
-If a new capability needs its own deployment steps, validation steps, variables, or target hosts, it should usually be its own role and its own pair of playbooks.
+If a new capability needs its own deployment steps, validation steps, reset steps, variables, or target hosts, it should usually be its own role and its own set of playbooks.
 
-That keeps the repository readable and makes it easier to demo, test, and maintain.
+That keeps the repository readable and makes it easier to review, test, and maintain.
+
+## Running New Playbooks
+
+Use the generic runner for any new playbook:
+
+```bash
+./scripts/run_playbook.sh playbooks/deploy_vulnerable_webapp.yml -i inventories/proxmox-lab.yml --limit ubuntuVictim
+./scripts/run_playbook.sh playbooks/validate_vulnerable_webapp.yml -i inventories/proxmox-lab.yml --limit ubuntuVictim
+./scripts/run_playbook.sh playbooks/reset_vulnerable_webapp.yml -i inventories/proxmox-lab.yml --limit ubuntuVictim
+```
+
+Or use the `Makefile` helper:
+
+```bash
+make playbook PLAYBOOK=playbooks/reset_vulnerable_webapp.yml INVENTORY=inventories/proxmox-lab.yml LIMIT=ubuntuVictim
+```
