@@ -151,6 +151,48 @@ services:
       - log4j-net
     restart: unless-stopped
 
+  rt-log4j-attacker:
+    image: rt-log4j-attacker
+    build:
+      context: ./apps/RT-Log4j
+      dockerfile: docker/attacker/Dockerfile
+    hostname: rt-log4j-attacker
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    environment:
+      - TARGET_HOST=host.docker.internal
+      - ATTACKER_HOST=rt-log4j-attacker
+      - ATTACKER_PORT=9999
+      - LOG4J_AUTH_PORT=8101
+      - LOG4J_INVENTORY_PORT=8102
+      - LOG4J_STATUS_PORT=8103
+      - LOG4J_VULN_APP_PORT=8180
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./apps/RT-Log4j/tools:/app/tools
+      - ./apps/RT-Log4j/config:/app/config
+      - ./apps/RT-Log4j/loot:/app/loot
+      - ./apps/RT-Log4j/logs:/app/logs
+    networks:
+      - log4j-net
+    depends_on:
+      - log4j-auth-service
+      - log4j-inventory-service
+      - log4j-status-service
+      - log4j-vulnerable-app
+    restart: unless-stopped
+
+  rt-log4j-training-ui:
+    image: nginx:alpine
+    ports:
+      - "8020:80"
+    volumes:
+      - ./apps/RT-Log4j/docs/training-ui:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
   # ----- SBOM-XRay lab (CLI; bundled image tars via bind mount; isolated network) -----
   sbom-xray-lab:
     build:

@@ -2,7 +2,7 @@
 COMPOSE ?= $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif docker-compose --version >/dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi)
 SHELL := /bin/bash
 
-.PHONY: help setup build up down restart logs ps logs-splunk validate urls test shell
+.PHONY: help setup build up down restart logs ps logs-splunk validate urls test shell rt-log4j-shell
 
 help:
 	@echo "HAFB DEMO-FULL Management"
@@ -68,6 +68,7 @@ urls:
 	@echo "  Logistics Portal:  http://localhost:9080"
 	@echo "  Log4j Lab Entry:   http://localhost:8180"
 	@echo "  Training UI:       http://localhost:8020"
+	@echo "  RT-Log4j Shell:    make rt-log4j-shell"
 	@echo ""
 	@echo "==============================================================="
 	@echo "  SERVICES"
@@ -98,3 +99,6 @@ shell:
 		exit 1; \
 	fi; \
 	$(COMPOSE) exec $(SERVICE) /bin/bash || $(COMPOSE) exec $(SERVICE) /bin/sh || $(COMPOSE) exec $(SERVICE) sh
+
+rt-log4j-shell:
+	$(COMPOSE) exec rt-log4j-attacker /bin/bash
