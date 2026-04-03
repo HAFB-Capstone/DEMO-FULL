@@ -12,4 +12,4 @@ RUN rm /bin/sh /bin/bash
 # Run as non-privileged user
 USER 1000
 
-ENTRYPOINT ["python", "src/main.py"]
+ENTRYPOINT ["python", "src/run.py"]

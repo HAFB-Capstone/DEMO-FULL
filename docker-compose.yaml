@@ -59,12 +59,14 @@ services:
       - "9080:8080"
     volumes:
       - ./apps/MIL-STD-1553-Vulnerable/flags:/flags:ro
+      - mil1553_logs:/logs
     networks:
       - mil1553-public
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    entrypoint: ["sh", "-c", "python app.py 2>&1 | tee /logs/logistics_portal.log"]
 
   maintenance-terminal:
     build: ./apps/MIL-STD-1553-Vulnerable/src/maintenance-terminal
@@ -78,11 +80,15 @@ services:
       - logistics-portal
       - serial-bus
     restart: unless-stopped
+    entrypoint: ["sh", "-c", "/app/entrypoint.sh 2>&1 | tee /logs/maintenance_terminal.log"]
+    volumes:
+      - mil1553_logs:/logs
 
   serial-bus:
     build: ./apps/MIL-STD-1553-Vulnerable/src/serial-bus
     volumes:
       - ./apps/MIL-STD-1553-Vulnerable/src/serial-bus:/app
+      - mil1553_logs:/logs
     ports:
       - "5001:5001/udp"
     networks:
@@ -101,9 +107,11 @@ services:
       - "8101:8001"
     volumes:
       - ./apps/Log4j-Vulnerable/flags:/flags:ro
+      - log4j_logs:/logs
     networks:
       - log4j-net
     restart: unless-stopped
+    entrypoint: ["sh", "-c", "java -jar app.jar 2>&1 | tee /logs/auth_service.log"]
 
   log4j-inventory-service:
     build:
@@ -113,9 +121,11 @@ services:
       - "8102:8002"
     volumes:
       - ./apps/Log4j-Vulnerable/flags:/flags:ro
+      - log4j_logs:/logs
     networks:
       - log4j-net
     restart: unless-stopped
+    entrypoint: ["sh", "-c", "java -jar app.jar 2>&1 | tee /logs/inventory_service.log"]
 
   log4j-status-service:
     build:
@@ -126,6 +136,9 @@ services:
     networks:
       - log4j-net
     restart: unless-stopped
+    entrypoint: ["sh", "-c", "python app.py 2>&1 | tee /logs/status_service.log"]
+    volumes:
+      - log4j_logs:/logs
 
   # ----- SBOM-XRay lab (CLI; bundled image tars via bind mount; isolated network) -----
   sbom-xray-lab:
@@ -145,13 +158,14 @@ services:
   # ----- Optional: Universal Forwarder containers (Docker “one UF per segment”) -----
   uf-mil1553:
     platform: linux/amd64
-    image: splunk/universalforwarder:10.0.0
+    build:
+      context: ./apps/splunk/uf_inputs
+      dockerfile: Dockerfile
     hostname: uf-mil1553
     environment:
       - SPLUNK_START_ARGS=--accept-license --no-prompt
       - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
       - SPLUNK_PASSWORD=${SPLUNK_UF_PASSWORD:-ChangemeUF1!}
-      - SPLUNK_STANDALONE_URL=splunk
     depends_on:
       splunk:
         condition: service_healthy
@@ -160,16 +174,21 @@ services:
     restart: unless-stopped
     profiles:
       - forwarders
+    volumes:
+      - mil1553_logs:/logs:ro
+      - ./apps/splunk/uf_inputs/inputs_mil1553.conf:/opt/splunkforwarder/etc/apps/hafb/local/inputs.conf
+      - ./apps/splunk/uf_inputs/outputs.conf:/opt/splunkforwarder/etc/apps/hafb/local/outputs.conf
 
   uf-log4j:
     platform: linux/amd64
-    image: splunk/universalforwarder:10.0.0
+    build:
+      context: ./apps/splunk/uf_inputs
+      dockerfile: Dockerfile
     hostname: uf-log4j
     environment:
       - SPLUNK_START_ARGS=--accept-license --no-prompt
       - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
       - SPLUNK_PASSWORD=${SPLUNK_UF_PASSWORD:-ChangemeUF1!}
-      - SPLUNK_STANDALONE_URL=splunk
     depends_on:
       splunk:
         condition: service_healthy
@@ -178,16 +197,21 @@ services:
     restart: unless-stopped
     profiles:
       - forwarders
+    volumes:
+      - log4j_logs:/logs:ro
+      - ./apps/splunk/uf_inputs/inputs_log4j.conf:/opt/splunkforwarder/etc/apps/hafb/local/inputs.conf
+      - ./apps/splunk/uf_inputs/outputs.conf:/opt/splunkforwarder/etc/apps/hafb/local/outputs.conf
 
   uf-scenario:
     platform: linux/amd64
-    image: splunk/universalforwarder:10.0.0
+    build:
+      context: ./apps/splunk/uf_inputs
+      dockerfile: Dockerfile
     hostname: uf-scenario
     environment:
       - SPLUNK_START_ARGS=--accept-license --no-prompt
       - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
       - SPLUNK_PASSWORD=${SPLUNK_UF_PASSWORD:-ChangemeUF1!}
-      - SPLUNK_STANDALONE_URL=splunk
     depends_on:
       splunk:
         condition: service_healthy
@@ -196,11 +220,17 @@ services:
     restart: unless-stopped
     profiles:
       - forwarders
+    volumes:
+      - ./apps/splunk/uf_inputs/outputs.conf:/opt/splunkforwarder/etc/apps/hafb/local/outputs.conf
 
 volumes:
   splunk_etc:
     driver: local
   splunk_var:
+    driver: local
+  log4j_logs:
+    driver: local
+  mil1553_logs:
     driver: local
 
 networks:
