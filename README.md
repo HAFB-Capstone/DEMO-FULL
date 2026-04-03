@@ -4,11 +4,11 @@ A comprehensive, monorepo-based lab environment for training on modern vulnerabi
 
 ```mermaid
 flowchart TB
-    subgraph red["🔴 Red Team (Attacker)"]
+    subgraph red["Red Team (Attacker)"]
         RT([Attacker Laptop])
     end
 
-    subgraph blue["🔵 Blue Team (Defense)"]
+    subgraph blue["Blue Team (Defense)"]
         direction TB
         S["Splunk Enterprise<br/>:8000"]
         UF["Universal Forwarders<br/>(Telemetry)"]
@@ -16,7 +16,7 @@ flowchart TB
         UF ==>|Log S2S| S
     end
 
-    subgraph log4j["🌐 Log4j Lab (log4j-net)"]
+    subgraph log4j["Log4j Lab (log4j-net)"]
         direction LR
         L1["Auth Service<br/>:8101"]
         L2["Inventory Service<br/>:8102"]
@@ -24,7 +24,7 @@ flowchart TB
         VA["Vulnerable App<br/>:8180"]
     end
 
-    subgraph mil["✈️ MIL-STD-1553 Lab"]
+    subgraph mil["MIL-STD-1553 Lab"]
         direction TB
         LP["Logistics Portal<br/>:9080"]
         MT["Maintenance Bridge<br/>(Internal)"]
@@ -33,7 +33,7 @@ flowchart TB
         MT ---|mil1553-avionics| SB
     end
 
-    subgraph sbom["📦 SBOM Lab"]
+    subgraph sbom["SBOM Lab"]
         SX["SBOM-XRay CLI"]
     end
 
@@ -86,7 +86,9 @@ Get the environment running in minutes.
     ```
     *Wait ~5 minutes for Splunk to initialize. Use `make logs-splunk` if it hangs.*
 
-> **[IMAGE: Dashboard showing all containers running in Docker Desktop or terminal]**
+<p align="center">
+<img src="resources/images/setup.jpg" width="600" alt="Docker desktop and terminal window showing running containers">
+</p>
 
 ---
 
@@ -143,7 +145,7 @@ Use Splunk to detect attacks and learn how to patch the environment.
 
 ---
 
-## 🛠️ Management Cheat Sheet
+## Management Cheat Sheet
 
 | Command | Description |
 | :--- | :--- |

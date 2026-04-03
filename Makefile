@@ -55,6 +55,9 @@ validate:
 	@echo "[*] Validating Log4j Services..."
 	@chmod +x apps/Log4j-Vulnerable/tools/test/test_services.sh
 	@bash apps/Log4j-Vulnerable/tools/test/test_services.sh | grep -E "PASS|FAIL"
+	@echo "[*] Validating MIL-STD-1553 Services..."
+	@chmod +x apps/MIL-STD-1553-Vulnerable/tools/test/test_services.sh
+	@bash apps/MIL-STD-1553-Vulnerable/tools/test/test_services.sh | grep -E "PASS|FAIL"
 
 urls:
 	@echo "==============================================================="

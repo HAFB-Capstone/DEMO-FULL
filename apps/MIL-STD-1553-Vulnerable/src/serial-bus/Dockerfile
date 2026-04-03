@@ -6,6 +6,9 @@ WORKDIR /app
 COPY ./simulator ./simulator
 COPY ./src ./src
 
+# Create logs directory and set permissions
+RUN mkdir -p /logs && chmod 777 /logs
+
 # Hardening: Remove the shell so players can't log in
 RUN rm /bin/sh /bin/bash
 

@@ -66,7 +66,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
-    entrypoint: ["sh", "-c", "python app.py 2>&1 | tee /logs/logistics_portal.log"]
+    entrypoint: ["sh", "-c", "chmod 777 /logs && python -u app.py 2>&1 | tee /logs/logistics_portal.log"]
 
   maintenance-terminal:
     build: ./apps/MIL-STD-1553-Vulnerable/src/maintenance-terminal
@@ -80,7 +80,7 @@ services:
       - logistics-portal
       - serial-bus
     restart: unless-stopped
-    entrypoint: ["sh", "-c", "/app/entrypoint.sh 2>&1 | tee /logs/maintenance_terminal.log"]
+    entrypoint: ["sh", "-c", "chmod 777 /logs || true; /app/entrypoint.sh 2>&1 | tee /logs/maintenance_terminal.log"]
     volumes:
       - mil1553_logs:/logs
 
@@ -96,6 +96,8 @@ services:
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+    depends_on:
+      - logistics-portal
     restart: unless-stopped
 
   # ----- Log4j (CVE-2021-44228) lab services -----
@@ -111,7 +113,7 @@ services:
     networks:
       - log4j-net
     restart: unless-stopped
-    entrypoint: ["sh", "-c", "java -jar app.jar 2>&1 | tee /logs/auth_service.log"]
+    entrypoint: ["sh", "-c", "chmod 777 /logs && java -jar app.jar 2>&1 | tee /logs/auth_service.log"]
 
   log4j-inventory-service:
     build:
@@ -125,7 +127,7 @@ services:
     networks:
       - log4j-net
     restart: unless-stopped
-    entrypoint: ["sh", "-c", "java -jar app.jar 2>&1 | tee /logs/inventory_service.log"]
+    entrypoint: ["sh", "-c", "chmod 777 /logs && java -jar app.jar 2>&1 | tee /logs/inventory_service.log"]
 
   log4j-status-service:
     build:
@@ -136,7 +138,7 @@ services:
     networks:
       - log4j-net
     restart: unless-stopped
-    entrypoint: ["sh", "-c", "python app.py 2>&1 | tee /logs/status_service.log"]
+    entrypoint: ["sh", "-c", "chmod 777 /logs && python app.py 2>&1 | tee /logs/status_service.log"]
     volumes:
       - log4j_logs:/logs
 
@@ -184,7 +186,6 @@ services:
 
   # ----- Optional: Universal Forwarder containers (Docker “one UF per segment”) -----
   uf-mil1553:
-    platform: linux/amd64
     build:
       context: ./apps/splunk/uf_inputs
       dockerfile: Dockerfile
@@ -207,7 +208,6 @@ services:
       - ./apps/splunk/uf_inputs/outputs.conf:/opt/splunkforwarder/etc/apps/hafb/local/outputs.conf
 
   uf-log4j:
-    platform: linux/amd64
     build:
       context: ./apps/splunk/uf_inputs
       dockerfile: Dockerfile
@@ -230,7 +230,6 @@ services:
       - ./apps/splunk/uf_inputs/outputs.conf:/opt/splunkforwarder/etc/apps/hafb/local/outputs.conf
 
   uf-scenario:
-    platform: linux/amd64
     build:
       context: ./apps/splunk/uf_inputs
       dockerfile: Dockerfile

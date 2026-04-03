@@ -2,3 +2,5 @@
 
 # Local-only SBOM-XRay planning / scratch (not committed)
 apps/SBOM-XRay/.local/
+
+.DS_Store
