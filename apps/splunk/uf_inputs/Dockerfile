@@ -11,3 +11,6 @@ RUN mkdir -p /opt/splunkforwarder/etc/apps/hafb/local && \
     chown -R splunk:splunk /opt/splunkforwarder/etc/apps/hafb
 # Set permissions
 RUN chown -R splunk:splunk /opt/splunkforwarder/etc /opt/splunkforwarder/var /opt/ansible/
+
+USER splunk
+ENTRYPOINT ["sh", "-c", "/opt/splunkforwarder/bin/splunk start --accept-license --no-prompt --answer-yes && tail -f /opt/splunkforwarder/var/log/splunk/splunkd.log"]

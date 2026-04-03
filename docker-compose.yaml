@@ -140,6 +140,17 @@ services:
     volumes:
       - log4j_logs:/logs
 
+  log4j-vulnerable-app:
+    platform: linux/amd64
+    image: ghcr.io/christophetd/log4shell-vulnerable-app@sha256:6f88430688108e512f7405ac3c73d47f5c370780b94182854ea2cddc6bd59929
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./apps/Log4j-Vulnerable/flags:/flags:ro
+    networks:
+      - log4j-net
+    restart: unless-stopped
+
   # ----- SBOM-XRay lab (CLI; bundled image tars via bind mount; isolated network) -----
   sbom-xray-lab:
     build:

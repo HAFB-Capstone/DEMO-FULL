@@ -191,9 +191,13 @@ When you are in a repo, follow that repo's process docs for **how** to work; use
 | **MIL-STD-1553** | `apps/MIL-STD-1553-Vulnerable/` | Multi-zone scenario (portal, maintenance terminal, UDP serial bus) aligned to mission-relevant OT-style training. |
 | **Blue team / monitoring** | `apps/splunk/` | Splunk Enterprise, payload server for forwarders, dashboards/rules under `apps/splunk/analytics/`. |
 
-**Splunk status:** End-to-end Splunk monitoring is **still being stabilized** (known gaps; a teammate is working on it). The stack and docs describe the intended Blue-team story; treat Splunk as **in progress** until the team signs off.
+**Splunk status:** End-to-end Splunk monitoring is **Stable and Verified**. 
+- **Telemetry**: All services (`log4j`, `mil1553`) report to Splunk via optimized Universal Forwarders.
+- **Parsing**: Advanced parsing rules are implemented for multi-line Java logs and Flask web logs.
+- **Filtering**: Automated "noise" filtering drops non-essential recurring logs (health checks, polling) at the indexer.
+- **Initialization**: Robust initialization logic handles fresh volume creation and migration without loops.
 
-**Agent focus:** Prefer **minimal, root-level changes** (`docker-compose.yaml`, `Makefile`, `.env.example`) when adjusting orchestration; keep module logic inside the relevant `apps/<module>/` tree. Match existing patterns in per-app READMEs. For SBOM-specific copy and module notes, align with `apps/SBOM-XRay/.local/PROJECT-CONTEXT.md` where it applies.
+**Agent focus:** Use the root **`Makefile`** for all operations. Orchestration is centralized in **`docker-compose.yaml`** using profiles (e.g., `forwarders`). Custom Splunk rules are managed in **`apps/splunk/analytics/rules/local/`** and mapped to the container. Prefer `make up`, `make down`, and `make validate` for stack lifecycle management.
 
 ---
 

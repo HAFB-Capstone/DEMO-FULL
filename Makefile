@@ -1,61 +1,44 @@
-# HAFB DEMO-FULL — Docker Compose shortcuts (POSIX; use Git Bash or WSL on Windows if needed)
+# HAFB DEMO-FULL — Management Makefile
 COMPOSE ?= $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif docker-compose --version >/dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi)
 SHELL := /bin/bash
 
-.PHONY: help setup build up down restart logs ps clean splunk-reset forwarders-up forwarders-down validate urls \
-	sbom-shell sbom-validate \
-	test-log4j test-mil1553-chain test-mil1553-tools reset-log4j reset-mil1553 \
-	rt-log4j-shell
+.PHONY: help setup build up down restart logs ps logs-splunk validate urls test shell
 
 help:
-	@echo "HAFB DEMO-FULL"
-	@echo "  make setup              — create .env, download Splunk UF payloads (no blocking HTTP server)"
-	@echo "  make build              — docker compose build (images only)"
-	@echo "  make up                 — docker compose up -d --build"
-	@echo "  make down               — stop stack"
-	@echo "  make restart            — down then up"
-	@echo "  make logs               — follow non-Splunk container logs"
-	@echo "  make logs-splunk        — follow Splunk only"
-	@echo "  make ps                 — docker compose ps"
-	@echo "  make clean              — down and remove volumes (Splunk data reset)"
-	@echo "  make splunk-reset       — reset Splunk containers/volumes only"
-	@echo "  make forwarders-up      — start profile forwarders (UF containers → Splunk)"
-	@echo "  make forwarders-down    — stop forwarder profile containers"
-	@echo "  make validate           — quick Splunk API check inside splunk container"
-	@echo "  make sbom-shell         — interactive bash in sbom-xray-lab container"
-	@echo "  make sbom-validate      — run offline Module 1 validation inside sbom-xray-lab"
-	@echo "  make urls               — print service URLs"
-	@echo "  make test-log4j         — health checks (ports 8101–8103)"
-	@echo "  make test-mil1553-chain — ephemeral MIL upload → bridge → bus chain"
-	@echo "  make test-mil1553-tools — ephemeral serial-bus + attacker image tests"
-	@echo "  make reset-log4j        — recreate Log4j lab containers only"
-	@echo "  make reset-mil1553      — recreate MIL-STD-1553 containers only"
-	@echo "  make rt-log4j-shell     — shell in RT-Log4j attacker (recon / Log4Shell tooling)"
-	@echo "See README.md for demo walkthrough, architecture, and attack routes."
+	@echo "HAFB DEMO-FULL Management"
+	@echo "  make setup      — Initial environment setup (.env and Splunk payloads)"
+	@echo "  make build      — Build all docker images"
+	@echo "  make up         — Start the entire stack (including forwarders)"
+	@echo "  make down       — Stop all containers and remove volumes"
+	@echo "  make restart    — Full restart of the stack"
+	@echo "  make logs       — Follow logs from all application services"
+	@echo "  make logs-splunk — Follow Splunk server logs"
+	@echo "  make ps         — Show status of all containers"
+	@echo "  make validate   — Validate Splunk and application health"
+	@echo "  make urls       — Print all service access URLs"
+	@echo "  make test       — Run all tests (or use TEST_APP=<name>)"
+	@echo "  make shell      — Open shell in service (use SERVICE=<name>)"
 
 setup:
-	@if [ ! -f .env ]; then cp .env.example .env && echo "[*] Created .env — edit SPLUNK_PASSWORD if needed."; fi
+	@if [ ! -f .env ]; then cp .env.example .env && echo "[*] Created .env — edit if needed."; fi
 	@cd apps/splunk && export SKIP_SERVE=1 && bash setup_host.sh
+	@echo "[*] Setup complete."
 
 build:
-	$(COMPOSE) build
+	$(COMPOSE) --profile forwarders build
 
 up:
-	$(COMPOSE) up -d --build
+	$(COMPOSE) --profile forwarders up -d
 	@echo ""
 	@$(MAKE) urls
 
 down:
-	$(COMPOSE) down -v
+	$(COMPOSE) --profile forwarders down -v --remove-orphans
 
 restart: down up
 
 logs:
-	@services="$$( $(COMPOSE) config --services | rg -v '^splunk$$|^splunk-payloads$$' )"; \
-	if [ -z "$$services" ]; then \
-		echo "[FAIL] No non-Splunk services found to tail"; \
-		exit 1; \
-	fi; \
+	@services="$$( $(COMPOSE) config --services | grep -vE '^splunk$$|^splunk-payloads$$|^uf-|^sbom-' )"; \
 	$(COMPOSE) logs -f $$services
 
 logs-splunk:
@@ -64,64 +47,54 @@ logs-splunk:
 ps:
 	$(COMPOSE) ps
 
-clean:
-	$(COMPOSE) down -v --remove-orphans
-
-splunk-reset:
-	-$(COMPOSE) stop splunk splunk-payloads
-	-$(COMPOSE) rm -f splunk splunk-payloads
-	-docker volume rm -f hafb-demo_splunk_etc hafb-demo_splunk_var
-	$(COMPOSE) up -d --build splunk splunk-payloads
-
-forwarders-up:
-	$(COMPOSE) --profile forwarders up -d
-
-forwarders-down:
-	-$(COMPOSE) --profile forwarders stop uf-mil1553 uf-log4j uf-scenario
-
 validate:
-	@echo "[*] Checking Splunk management API from inside container..."
-	@$(COMPOSE) exec -T splunk sh -c 'curl -sk -u "admin:$$SPLUNK_PASSWORD" "https://localhost:8089/services/server/info?output_mode=json" | grep -q "\"version\"" && echo "[OK] Splunk API responding" || (echo "[FAIL] Splunk API check failed"; exit 1)'
+	@echo "[*] Validating Splunk API..."
+	@$(COMPOSE) exec -T splunk sh -c 'curl -sk -u "admin:$$SPLUNK_PASSWORD" "https://localhost:8089/services/server/info?output_mode=json" | grep -q "\"version\"" && echo "[OK] Splunk API responding" || echo "[FAIL] Splunk API check failed"'
+	@echo "[*] Validating Log4j Services..."
+	@chmod +x apps/Log4j-Vulnerable/tools/test/test_services.sh
+	@bash apps/Log4j-Vulnerable/tools/test/test_services.sh | grep -E "PASS|FAIL"
 
 urls:
-	@echo "Splunk web UI:     http://localhost:8000  (admin / SPLUNK_PASSWORD in .env)"
-	@echo "Splunk mgmt (host): https://localhost:9089"
-	@echo "UF payload server: http://localhost:8001   (forwarder packages + deploy script)"
-	@echo "MIL logistics:     http://localhost:9080"
-	@echo "Log4j auth:        http://localhost:8101"
-	@echo "Log4j inventory:   http://localhost:8102"
-	@echo "Log4j status:      http://localhost:8103"
-	@echo "Log4j vuln app:    http://localhost:8180  (christophetd; use X-Api-Version header on GET /)"
-	@echo "RT-Log4j training UI: http://localhost:8020"
-	@echo "RT-Log4j attacker:    docker compose exec -it rt-log4j-attacker bash  (or: make rt-log4j-shell)"
-	@echo "MIL serial bus UDP: localhost:5001"
-	@echo "SBOM-XRay lab:     docker compose exec sbom-xray-lab bash  (CLI only; no HTTP port)"
+	@echo "==============================================================="
+	@echo "  BLUE TEAM (DEFENSE)"
+	@echo "==============================================================="
+	@echo "  Splunk Web UI:     http://localhost:8000 (admin / Changeme1!)"
+	@echo "  Splunk Management: https://localhost:9089"
+	@echo "  UF Payload Server: http://localhost:8001"
+	@echo ""
+	@echo "==============================================================="
+	@echo "  RED TEAM (ATTACK)"
+	@echo "==============================================================="
+	@echo "  Logistics Portal:  http://localhost:9080"
+	@echo "  Log4j Lab Entry:   http://localhost:8180"
+	@echo "  Training UI:       http://localhost:8020"
+	@echo ""
+	@echo "==============================================================="
+	@echo "  SERVICES"
+	@echo "==============================================================="
+	@echo "  Auth Service:      http://localhost:8101"
+	@echo "  Inventory Service: http://localhost:8102"
+	@echo "  Status Service:    http://localhost:8103"
+	@echo "==============================================================="
 
-sbom-shell:
-	$(COMPOSE) exec sbom-xray-lab bash
+test:
+	@if [ "$(TEST_APP)" == "log4j" ]; then \
+		chmod +x apps/Log4j-Vulnerable/tools/test/test_services.sh && bash apps/Log4j-Vulnerable/tools/test/test_services.sh; \
+	elif [ "$(TEST_APP)" == "mil1553" ]; then \
+		$(MAKE) down && chmod +x apps/MIL-STD-1553-Vulnerable/tools/test/test_attack_chain.sh && bash apps/MIL-STD-1553-Vulnerable/tools/test/test_attack_chain.sh; \
+	elif [ "$(TEST_APP)" == "sbom" ]; then \
+		$(COMPOSE) run --rm sbom-xray-lab bash /lab/validate-module1-offline.sh --lab-dir /lab; \
+	else \
+		echo "[*] Running all tests..."; \
+		chmod +x apps/Log4j-Vulnerable/tools/test/test_services.sh && bash apps/Log4j-Vulnerable/tools/test/test_services.sh; \
+		chmod +x apps/MIL-STD-1553-Vulnerable/tools/test/test_attack_chain.sh && bash apps/MIL-STD-1553-Vulnerable/tools/test/test_attack_chain.sh; \
+		$(COMPOSE) run --rm sbom-xray-lab bash /lab/validate-module1-offline.sh --lab-dir /lab; \
+	fi
 
-sbom-validate:
-	$(COMPOSE) run --rm sbom-xray-lab bash /lab/validate-module1-offline.sh --lab-dir /lab
-
-test-log4j:
-	@chmod +x apps/Log4j-Vulnerable/tools/test/test_services.sh
-	@bash apps/Log4j-Vulnerable/tools/test/test_services.sh
-
-test-mil1553-chain:
-	@chmod +x apps/MIL-STD-1553-Vulnerable/tools/test/test_attack_chain.sh
-	@bash apps/MIL-STD-1553-Vulnerable/tools/test/test_attack_chain.sh
-
-test-mil1553-tools:
-	@chmod +x apps/MIL-STD-1553-Vulnerable/tools/test/test_tools.sh
-	@bash apps/MIL-STD-1553-Vulnerable/tools/test/test_tools.sh
-
-reset-log4j:
-	@chmod +x apps/Log4j-Vulnerable/restore.sh
-	@bash apps/Log4j-Vulnerable/restore.sh
-
-reset-mil1553:
-	@chmod +x apps/MIL-STD-1553-Vulnerable/restore.sh
-	@bash apps/MIL-STD-1553-Vulnerable/restore.sh
-
-rt-log4j-shell:
-	$(COMPOSE) exec rt-log4j-attacker bash
+shell:
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "[FAIL] Please specify a service: make shell SERVICE=<name>"; \
+		echo "Available: $$( $(COMPOSE) config --services | xargs )"; \
+		exit 1; \
+	fi; \
+	$(COMPOSE) exec $(SERVICE) /bin/bash || $(COMPOSE) exec $(SERVICE) /bin/sh || $(COMPOSE) exec $(SERVICE) sh
