@@ -13,3 +13,17 @@ all:
               ansible_host: 192.168.86.37
               ansible_user: hafb
               ansible_become: false
+        victim:
+          hosts:
+            ubuntuVictim:
+              ansible_host: 192.168.86.32
+              ansible_user: hafb
+              ansible_become: false
+        red:
+          hosts:
+            kaliRed:
+              ansible_host: 192.168.86.27
+              ansible_user: kali
+              ansible_become: false
+              # Use SSH keys or `-k`/`--ask-pass` when targeting Kali.
+              # The password is intentionally not stored in version control.

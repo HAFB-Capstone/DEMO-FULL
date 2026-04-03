@@ -94,18 +94,21 @@ cd ~/hafb-range-control
 
 ### 6. Create a real inventory
 
-Start from the example:
-
-```bash
-cp inventories/proxmox-lab.example.yml inventories/proxmox-lab.yml
-```
-
 Edit:
 
 - Control VM hostname/IP
 - `ubuntuBlue` hostname/IP
-- any later targets such as `ubuntuVictim`
+- `ubuntuVictim` hostname/IP
+- `kaliRed` hostname/IP
 - SSH user for each target
+
+The current `inventories/proxmox-lab.yml` already includes:
+
+- `ubuntuBlue` at `192.168.86.37` with user `hafb`
+- `ubuntuVictim` at `192.168.86.32` with user `hafb`
+- `kaliRed` at `192.168.86.27` with user `kali`
+
+Keep the Kali password out of version control. Use SSH keys or `-k` / `--ask-pass` when you need password authentication.
 
 ### 7. Set up SSH trust from Control VM to target VM
 

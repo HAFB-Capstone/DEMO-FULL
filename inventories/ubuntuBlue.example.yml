@@ -1,9 +1,0 @@
-all:
-  children:
-    analysis:
-      hosts:
-        ubuntuBlue:
-          ansible_host: 192.168.56.20
-          ansible_user: student
-          ansible_become: false
-

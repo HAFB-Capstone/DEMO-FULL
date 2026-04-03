@@ -6,7 +6,7 @@ If the README is the short version, this is the "what is actually happening?" ve
 
 ## One-sentence summary
 
-This repo is the control layer for your capstone lab: it uses Ansible to deploy one offline training module and validate that install on the target system.
+This repo is the Ansible control layer for your capstone lab: it provides a reusable pattern for deploying and validating training modules, vulnerable services, and related host automation.
 
 ## The simplest mental model
 
@@ -22,8 +22,8 @@ That is the entire supported workflow in this repository.
 This repo is:
 
 - an Ansible control repo
-- a wrapper around an existing offline training bundle
 - a place to keep deployment and validation automation together
+- a reusable structure for additional modules or target services
 
 This repo is not:
 
@@ -37,11 +37,30 @@ The actual training content lives in `SBOM-Training-Module`.
 
 This repository is scoped to automation.
 
-Its job is to deploy and validate the supported module. Scoring and operator visibility are handled outside this repository.
+Its job is to deploy and validate supported targets. Scoring and operator visibility are handled outside this repository.
+
+## Generic repository pattern
+
+At a high level, the repository works like this:
+
+1. `inventories/` defines which systems Ansible can target
+2. `playbooks/` defines the entrypoints for a specific automation action
+3. `roles/` contains the actual deploy and validate logic
+4. `scripts/` wraps playbook execution so operators use a consistent command pattern
+
+That pattern works whether the target is:
+
+- a training module on an analysis VM
+- a vulnerable service on a victim VM
+- a system configuration task on a managed host
+
+## Current reference implementation
+
+The current concrete implementation in the repo is `sbom_module1`, which deploys and validates `SBOM-Training-Module` Module 1.
 
 ## The current implementation flow
 
-Here is the real flow from start to finish:
+Here is the current example flow from start to finish:
 
 1. You place an extracted Module 1 offline bundle on the machine running Ansible.
 2. You run `./scripts/deploy.sh` with an inventory.
@@ -115,6 +134,50 @@ It:
 4. runs `validate-module1-offline.sh`
 5. writes a local validation log into the lab directory
 
+## How this applies to new modules or vulnerable services
+
+The same repository pattern can be reused for other targets.
+
+### Additional training module
+
+A future training-module role would normally:
+
+1. accept a bundle path or source directory
+2. copy the bundle to the correct target host
+3. run that module's installer
+4. run that module's validator or post-install checks
+
+### Vulnerable service or lab target
+
+A future vulnerable-service role would normally:
+
+1. target a host such as `ubuntuVictim`
+2. copy application files, a container stack, or configuration
+3. install required packages from approved internal sources
+4. start the service
+5. validate that the service is reachable or configured as expected
+
+Validation for a vulnerable service might be:
+
+- `systemctl status`
+- container health checks
+- an HTTP response check
+- an open-port check
+- a file or configuration check
+
+## How to add a new automation target
+
+The clean pattern is:
+
+1. create a new role under `roles/<target_name>/`
+2. add role defaults in `defaults/main.yml`
+3. split the tasks into `tasks/deploy.yml` and `tasks/validate.yml`
+4. add a top-level deploy playbook and validate playbook
+5. add or update inventory groups for the systems that should receive that automation
+6. add a wrapper script only if the target needs a dedicated operator command
+
+That gives you a structure that scales without mixing every lab task into one large playbook.
+
 ## Why the repo uses explicit inventories
 
 The wrapper scripts force you to pass `-i` even though `ansible.cfg` has a default inventory.
@@ -125,7 +188,7 @@ Without that guard, if you were on the future Control VM and ran deploy by mista
 
 So the repo makes you be explicit.
 
-## Why `ubuntuBlue` is the first target
+## Why `ubuntuBlue` is the first target example
 
 `SBOM-Training-Module` Module 1 is Linux-targeted. The installer and tooling are meant to run on a Linux analysis VM.
 
@@ -171,15 +234,20 @@ On the target system, deployment and validation create:
 If you need a short explanation, say this:
 
 - `SBOM-Training-Module` contains the actual lab content
-- `hafb-range-control` is the Ansible automation layer for deploying and validating that content
-- the repository stages the bundle, runs the installer, and runs the validator
+- `hafb-range-control` is the reusable Ansible automation layer for deploying and validating lab targets
+- the current reference implementation stages the Module 1 bundle, runs the installer, and runs the validator
+- the same structure can be reused for additional modules or vulnerable services
 - scoring is handled in a separate repository
 
 ## Common confusion points
 
 ### "Why does this repo point to another repo?"
 
-Because this repo is not the module itself. It controls deployment of the offline bundle produced by `SBOM-Training-Module`.
+Because this repo is the automation layer, not the content layer. In the current implementation it automates the offline bundle produced by `SBOM-Training-Module`.
+
+### "Is this repo only for Module 1?"
+
+No. Module 1 is the current implemented example. The repository structure is meant to support additional training modules, vulnerable services, and other Ansible-managed lab tasks.
 
 ### "Why not just run the installer manually?"
 

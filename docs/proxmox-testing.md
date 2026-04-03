@@ -38,6 +38,14 @@ After the localhost proof on `ubuntuBlue`, move to the actual architecture:
 4. test Ansible connectivity
 5. run Module 1 deployment from the Control VM to `ubuntuBlue`
 
+The current `inventories/proxmox-lab.yml` reflects the known lab hosts:
+
+- `ubuntuBlue` at `192.168.86.37` with user `hafb`
+- `ubuntuVictim` at `192.168.86.32` with user `hafb`
+- `kaliRed` at `192.168.86.27` with user `kali`
+
+Do not store the Kali password in the repository. Use SSH keys or `-k` / `--ask-pass` when targeting `kaliRed`.
+
 ## Step 1: verify `ubuntuBlue` state
 
 On `ubuntuBlue`, run:

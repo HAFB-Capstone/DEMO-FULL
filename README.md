@@ -2,7 +2,13 @@
 
 `hafb-range-control` is the Ansible automation repository for the Hill AFB capstone lab.
 
-It performs one supported workflow:
+It is intended to be the central automation layer for:
+
+- training modules
+- vulnerable services or target workloads
+- supporting host configuration tasks
+
+The current reference implementation in this repository is:
 
 1. deploy `SBOM-Training-Module` Module 1 (`sbom-xray-lab`) to a Linux analysis system with Ansible
 2. validate the installed module using the module's offline validator
@@ -17,23 +23,47 @@ If you need the plain-English walkthrough, start with [docs/how-it-works.md](doc
 
 This repository is responsible for:
 
-- Ansible-based deployment of the Module 1 offline bundle
-- execution of the module's validation script on the target system
-- staging the bundle on the target host
-- running the module's installer and validator in a repeatable way
+- managing inventories, playbooks, and roles for lab automation
+- staging deployment artifacts on target hosts
+- running repeatable deployment steps on managed systems
+- running validation steps after deployment
+- serving as the controller-side automation repo for additional modules or vulnerable services
 
 This repository does not:
 
-- rebuild the Module 1 bundle
+- rebuild module bundles
 - host the student lab content source
 - require internet access during runtime
 - own scoring logic or dashboard logic
 
-## Supported Target
+## Repository Model
 
-The supported runtime target is a Linux analysis VM such as `ubuntuBlue`.
+The repository is organized around a reusable Ansible pattern:
 
-The repository can be run in two ways:
+1. inventory files define target systems and connection details
+2. playbooks select a target group and a role
+3. roles implement deployment and validation behavior
+4. shell wrappers enforce explicit inventories and consistent execution
+
+That pattern is reusable whether the target is:
+
+- an offline training module
+- a vulnerable application stack
+- a host configuration task on `ubuntuBlue`, `ubuntuVictim`, or another managed VM
+
+## Current Reference Implementation
+
+The current implemented example is `SBOM-Training-Module` Module 1.
+
+That implementation uses:
+
+- `playbooks/deploy_sbom_module1.yml`
+- `playbooks/validate_sbom_module1.yml`
+- `roles/sbom_module1/`
+
+The current runtime target is a Linux analysis VM such as `ubuntuBlue`.
+
+The repository can still be run in two ways:
 
 - directly on the Linux target with `inventories/localhost.yml`
 - remotely from a control VM over SSH using a remote inventory
@@ -42,7 +72,15 @@ macOS is suitable for editing the repo and running limited checks, but the actua
 
 ## Execution Flow
 
-The operational flow is:
+The generic control flow is:
+
+1. the controller machine has the deployment artifacts or source files needed for a target
+2. a wrapper script or `ansible-playbook` command launches the correct playbook
+3. the playbook applies a role to the intended inventory group
+4. the role performs deployment tasks on the target
+5. the role performs validation tasks on the target
+
+The current Module 1 implementation follows that pattern like this:
 
 1. the controller machine has an extracted Module 1 offline bundle available on disk
 2. `scripts/deploy.sh` runs `playbooks/deploy_sbom_module1.yml`
@@ -56,6 +94,9 @@ The operational flow is:
 - `scripts/deploy.sh`: deploy wrapper for Ansible
 - `scripts/validate.sh`: validation wrapper for Ansible
 - `scripts/ping_targets.sh`: connectivity test for remote inventories
+- `inventories/`: host definitions and connection settings
+- `playbooks/`: top-level automation entrypoints
+- `roles/`: reusable automation units for modules, services, or host tasks
 - `playbooks/deploy_sbom_module1.yml`: deployment entrypoint
 - `playbooks/validate_sbom_module1.yml`: validation entrypoint
 - `roles/sbom_module1/tasks/deploy.yml`: bundle staging and installer execution
@@ -80,15 +121,31 @@ Important defaults:
 - target staging directory: `~/hafb-staging/module1-offline-bundle`
 - installed lab directory: `~/labs/sbom-Module1-sbom-xray`
 
+These defaults belong to the current `sbom_module1` role. Additional roles can define their own defaults and target paths.
+
 ## Inventories
 
 The repository includes:
 
 - `inventories/localhost.yml`: local execution on the Linux target
-- `inventories/ubuntuBlue.example.yml`: example remote inventory for one analysis host
-- `inventories/proxmox-lab.example.yml`: example remote inventory for a multi-VM lab
+- `inventories/proxmox-lab.yml`: current multi-VM lab inventory for the Proxmox environment
 
 Although `ansible.cfg` defines a default inventory, the wrapper scripts still require an explicit `-i` inventory argument. This is intentional so deployment and validation always target the intended system.
+
+As the repository grows, inventories can map different host groups for different automation categories, such as:
+
+- `analysis`: training module targets
+- `victim`: vulnerable service targets
+- `red`: operator or red-team systems
+- additional custom groups for service-specific automation
+
+The current `inventories/proxmox-lab.yml` maps:
+
+- `ubuntuBlue` at `192.168.86.37` with user `hafb`
+- `ubuntuVictim` at `192.168.86.32` with user `hafb`
+- `kaliRed` at `192.168.86.27` with user `kali`
+
+For `kaliRed`, use SSH keys or `-k`/`--ask-pass` when needed. The password is not stored in the repository.
 
 ## Commands
 
@@ -106,7 +163,6 @@ export SBOM_BUNDLE_SOURCE_DIR=/tmp/Module1-offline-bundle-sbom-xray-2026-03-25_0
 
 ```bash
 cd ~/hafb-range-control
-cp inventories/proxmox-lab.example.yml inventories/proxmox-lab.yml
 $EDITOR inventories/proxmox-lab.yml
 
 ./scripts/ping_targets.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
@@ -118,12 +174,46 @@ export SBOM_BUNDLE_SOURCE_DIR=~/bundles/Module1-offline-bundle-sbom-xray-2026-03
 
 In the remote-controller model, the extracted bundle must exist on the controller VM first. Ansible copies it from the controller to the target.
 
+## Extending The Repository
+
+This repository is designed to support more than the current Module 1 example.
+
+Typical extension patterns are:
+
+- add another training module role that stages a different offline bundle and runs that module's validator
+- add a vulnerable service role that deploys an application, configuration, or container stack onto `ubuntuVictim`
+- add a host-configuration role that installs tools, copies files, or enables services on a managed VM
+
+For example, a future vulnerable-service role could:
+
+1. copy application files or a Compose stack to `ubuntuVictim`
+2. install dependencies from approved internal sources
+3. start the vulnerable service
+4. run a validation step such as an HTTP health check, open-port check, or service status check
+
+For example, a future training-module role could:
+
+1. stage a different offline lab bundle on `ubuntuBlue`
+2. run the module installer
+3. validate expected files, tools, or directories
+
+The recommended implementation pattern for any new automation target is:
+
+1. create a new role under `roles/<name>/`
+2. put role-specific defaults in `defaults/main.yml`
+3. separate deployment and validation tasks under `tasks/deploy.yml` and `tasks/validate.yml`
+4. create top-level playbooks for that role
+5. add or reuse inventory groups for the target systems
+6. add a wrapper script only if the new target needs a dedicated entrypoint
+
 ## Generated Artifacts
 
 Additional operational evidence written by deployment and validation includes:
 
 - `~/labs/sbom-Module1-sbom-xray/.hafb_range_control_installed`
 - `~/labs/sbom-Module1-sbom-xray/.hafb_range_control_last_validate.txt`
+
+Those files are specific to the current Module 1 example. Future roles can emit their own role-specific evidence files or logs.
 
 ## Make Targets
 
@@ -144,13 +234,14 @@ hafb-range-control/
 ├── docs/
 ├── inventories/
 ├── playbooks/
-├── roles/sbom_module1/
+├── roles/
 └── scripts/
 ```
 
 ## Documentation
 
 - [docs/how-it-works.md](docs/how-it-works.md): plain-English walkthrough
+- [docs/extending-the-repo.md](docs/extending-the-repo.md): how to add new modules or vulnerable services
 - [docs/demo-runbook.md](docs/demo-runbook.md): demo command sequence and talking points
 - [docs/architecture.md](docs/architecture.md): architecture and operating model
 - [docs/control-vm-rollout.md](docs/control-vm-rollout.md): control VM setup guidance
