@@ -117,9 +117,10 @@ Explore and exploit intentional vulnerabilities across different domains.
 Understand how to identify vulnerable components before they are exploited.
 
 1.  **Enter Lab**: `make shell SERVICE=sbom-xray-lab`
-2.  **Generate SBOM**: Use **Syft** to scan the included artifacts.
-3.  **Identify Risks**: Locate the specific version of Log4j (2.14.1) within the `flight-path` or `radar-control` packages.
 
+2. **Follow the lab materials** in `apps/SBOM-XRay/`:
+   - **[Student guide](apps/SBOM-XRay/sbom-xray-lab-student-guide.md)** — context, tooling, and walkthrough
+   - **[Student worksheet](apps/SBOM-XRay/sbom-xray-lab-student-worksheet.md)** — exercises and deliverables
 > **[IMAGE: Screenshot of a Syft scan result highlighting the Log4j vulnerability]**
 
 ---
