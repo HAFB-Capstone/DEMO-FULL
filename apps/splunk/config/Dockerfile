@@ -1,4 +1,4 @@
-FROM splunk/splunk:10.0
+FROM splunk/splunk:9.4.2
 USER root
 
 # Install tools
@@ -7,8 +7,14 @@ RUN microdnf install -y acl sudo && microdnf clean all
 # Copy over ansible config
 COPY ansible.cfg /opt/ansible/ansible.cfg
 
-# Fix the stalled task by making it do nothing
-RUN printf -- "- name: Bypassing slow chown\n  debug:\n    msg: 'Skipping recursive owner check'\n" > /opt/ansible/roles/splunk_common/tasks/change_splunk_directory_owner.yml
+# Fix stalled task and bind-mount EPERM by doing non-recursive shell chown instead of Ansible file module (which hits EPERM on virtiofs)
+RUN printf -- "- name: Fast chown via shell\n  shell: chown splunk:splunk /opt/splunk/etc /opt/splunk/etc/apps || true\n  become: yes\n" > /opt/ansible/roles/splunk_common/tasks/change_splunk_directory_owner.yml
+
+# Run update_etc script as root so it can cleanly extract initial configs into Docker's root-owned intermediate bind mount dirs
+RUN sed -i 's/become_user: "{{ splunk.user }}"/become_user: root/g' /opt/ansible/roles/splunk_common/tasks/update_etc.yml
+
+# Avoid HEC setup failure when splunk_httpinput app is missing from REST (404 on http input)
+COPY set_as_hec_receiver.yml /opt/ansible/roles/splunk_common/tasks/set_as_hec_receiver.yml
 
 # Disable Splunk's own monitoring and tune the web interface
 RUN mkdir -p /opt/splunk/etc/system/local && \
@@ -23,5 +29,3 @@ RUN mkdir -p /opt/splunk/etc/system/local && \
 
 # Set permissions
 RUN chown -R splunk:splunk /opt/splunk/etc /opt/splunk/var /opt/ansible/
-
-USER splunk

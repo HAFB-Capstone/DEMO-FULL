@@ -1,0 +1,10 @@
+---
+# Overrides upstream splunk_common/tasks/set_as_hec_receiver.yml for DEMO-FULL.
+# Upstream POSTs to /services/data/inputs/http/http, which requires the
+# splunk_httpinput app. In some lab setups that app is not present in the REST
+# layer (404: Application does not exist: splunk_httpinput). This stack does not
+# rely on HEC; forwarders use 9997 and the UI uses 8000/8089.
+- name: Skip HTTP Event Collector (HEC) receiver setup
+  debug:
+    msg: "Skipping global HEC configuration (demo stack; splunk_httpinput unavailable or not required)."
+  changed_when: false
