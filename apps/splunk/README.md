@@ -1,6 +1,10 @@
 # BT-Splunk (Blue Team)
 
-Splunk Enterprise image build, analytics (rules + dashboards), Universal Forwarder payloads, and deployment scripts. In **DEMO-FULL**, Splunk is started by the **repository root** [`docker-compose.yaml`](../../docker-compose.yaml): service `splunk` (web UI on host **9000**, management **9089**, ingest **9997**) and `splunk-payloads` (installers on **8001**).
+Splunk Enterprise image build, analytics (rules + dashboards), Universal Forwarder payloads, and deployment scripts. In **DEMO-FULL**, Splunk is started by the **repository root** [`docker-compose.yaml`](../../docker-compose.yaml): service `splunk` (web UI on host **8000**, management **9089**, ingest **9997**) and `splunk-payloads` (installers on **8001**).
+
+On ARM hosts (for example Apple Silicon), Splunk services run with `linux/amd64` emulation in Compose.
+The custom image currently pins `splunk/splunk:9.4.2` to avoid a known 10.0.x startup migration crash in this lab setup.
+Ansible **HTTP Event Collector (HEC)** setup is **skipped** in the image (`config/set_as_hec_receiver.yml`); this demo uses forwarder ingestion on **9997**, not HEC.
 
 ## Quick commands (monorepo root)
 
@@ -8,8 +12,11 @@ Splunk Enterprise image build, analytics (rules + dashboards), Universal Forward
 |------|---------|
 | Prepare UF packages | `make setup` (runs `setup_host.sh` with `SKIP_SERVE=1`) |
 | Start full stack | `make up` |
+| Reset Splunk data only | `make splunk-reset` |
 | Splunk health | `make validate` |
 | Logs | `make logs-splunk` |
+
+If UF payload downloads fail during setup, ensure `wget` or `curl` is installed, or place the expected files manually in `apps/splunk/deployment/payloads/`.
 
 ## Forwarder on Linux targets
 

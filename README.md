@@ -5,6 +5,7 @@ Monorepo that wires **HAFB capstone apps** into one Docker Compose stack for red
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) with Compose v2 (`docker compose`)
+- `docker-compose` standalone CLI also works (Make auto-detects either form)
 - **GNU Make** and **Bash** (Git Bash or WSL on Windows; native Linux/macOS work out of the box)
 - Network access for the **first** `make setup` if Splunk forwarder `.deb` / `.rpm` files are not already in `apps/splunk/deployment/payloads/` (the Splunk app’s `setup_host.sh` downloads them when possible)
 - Network access for the **first** build of **`sbom-xray-lab`** so Docker can download pinned **Syft** and **jq** release binaries (see `apps/SBOM-XRay/docker/Dockerfile`); runtime does not fetch them again
@@ -29,7 +30,7 @@ High-level view of how services and networks fit together in the **root** [`dock
 flowchart TB
     subgraph blue["Blue team — scenario network"]
         SP["splunk-payloads :8001"]
-        S["Splunk Enterprise :9000 / :9089 / :9997"]
+        S["Splunk Enterprise :8000 / :9089 / :9997"]
         UF1["uf-mil1553"]
         UF2["uf-log4j"]
         UF3["uf-scenario"]
@@ -121,7 +122,7 @@ Use this as a **presenter runbook** (~20–30 minutes with discussion). Adjust o
 
 ### 3. Blue team anchor — Splunk (5 min)
 
-- Open **http://localhost:9000**, sign in with `admin` and `SPLUNK_PASSWORD` from `.env`.
+- Open **http://localhost:8000**, sign in with `admin` and `SPLUNK_PASSWORD` from `.env`.
 - Show saved content under Search (dashboards/rules mounted from `apps/splunk/analytics/`).
 - Mention **http://localhost:8001** for UF packages and `deploy_splunk_forwarder.sh` on Linux targets.
 
@@ -147,7 +148,7 @@ Use this as a **presenter runbook** (~20–30 minutes with discussion). Adjust o
 
 | Area | Services | Host URLs / ports |
 |------|-----------|-------------------|
-| Blue team | Splunk Enterprise | Web **http://localhost:9000**, mgmt **https://localhost:9089**, ingest **9997** |
+| Blue team | Splunk Enterprise | Web **http://localhost:8000**, mgmt **https://localhost:9089**, ingest **9997** |
 | Blue team | Payload server | **http://localhost:8001** — forwarder installers + `deploy_splunk_forwarder.sh` for **Linux targets** |
 | MIL-STD-1553 lab | logistics portal, maintenance terminal, serial bus | Portal **http://localhost:9080**, UDP **5001** |
 | Log4j lab | auth, inventory, status | **http://localhost:8101** … **8103** |
@@ -164,10 +165,11 @@ Host ports are chosen so **nothing collides** on one machine (Splunk UI is not 8
 | `make up` | `docker compose up -d --build` |
 | `make down` | Stop stack |
 | `make restart` | `down` then `up` |
-| `make logs` | Follow all container logs |
+| `make logs` | Follow non-Splunk container logs |
 | `make logs-splunk` | Splunk container only |
 | `make ps` | Container status |
 | `make clean` | Stop and **remove volumes** (Splunk data reset) |
+| `make splunk-reset` | Reset only Splunk containers + Splunk named volumes, then rebuild/start Splunk services |
 | `make forwarders-up` / `make forwarders-down` | Optional UF profile |
 | `make validate` | Splunk API check **inside** the `splunk` container |
 | `make sbom-shell` | Interactive `bash` **inside** `sbom-xray-lab` |
@@ -207,7 +209,12 @@ Details: [apps/splunk/README.md](apps/splunk/README.md).
 ## Troubleshooting
 
 - **Splunk never becomes healthy**: More Docker memory/CPU; `make logs-splunk`. First boot can exceed five minutes.
+- **Apple Silicon / ARM hosts**: Splunk services are pinned to `linux/amd64`; expect slower startup under emulation on M-series Macs.
+- **Splunk startup crashes during migration (`NoneType` / `alert_webhook`)**: The image is pinned to a stable base (`splunk/splunk:9.4.2`) to avoid a 10.0.x migration bug.
 - **`make validate` fails**: Wait for healthcheck; align `SPLUNK_PASSWORD` in root `.env` with first-time provisioning (`make clean` + `make up` resets persisted state).
+- **Splunk restart loop with migration errors (`NoneType` / `alert_webhook`)**: Run `make splunk-reset` to remove stale Splunk volumes created by a previous image and start with a fresh state.
+- **HEC / `splunk_httpinput` / `Setup global HEC` fails (404)**: The lab image skips Ansible HEC setup because the HTTP Event Collector app is not required here (forwarders use **9997**). Rebuild the Splunk image after pulling changes: `make splunk-reset` or `docker compose build --no-cache splunk` then `make up`.
+- **`make setup` fails fetching UF payloads**: Install `wget` or `curl`, or manually download the `.deb` / `.rpm` into `apps/splunk/deployment/payloads/`. In non-interactive mode (`SKIP_SERVE=1`, used by `make setup`), the script now exits instead of waiting for prompt input.
 - **Port already allocated**: Edit host mappings in [docker-compose.yaml](docker-compose.yaml).
 - **Windows**: Prefer WSL2 + Docker Desktop and Git Bash for `make` / shell scripts.
 

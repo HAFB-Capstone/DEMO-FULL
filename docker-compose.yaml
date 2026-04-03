@@ -5,13 +5,13 @@ name: hafb-demo
 services:
   # ----- Blue team: Splunk Enterprise -----
   splunk:
+    platform: linux/amd64
     build:
       context: ./apps/splunk/config
       dockerfile: Dockerfile
     hostname: splunk
     restart: unless-stopped
     tty: true
-    user: splunk
     environment:
       - SPLUNK_START_ARGS=--accept-license --no-kvstore
       - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
@@ -19,7 +19,7 @@ services:
       - SPLUNK_USER=splunk
       - ANSIBLE_BECOME=false
     ports:
-      - "9000:8000"
+      - "8000:8000"
       - "9089:8089"
       - "9997:9997"
     volumes:
@@ -144,6 +144,7 @@ services:
 
   # ----- Optional: Universal Forwarder containers (Docker “one UF per segment”) -----
   uf-mil1553:
+    platform: linux/amd64
     image: splunk/universalforwarder:10.0.0
     hostname: uf-mil1553
     environment:
@@ -161,6 +162,7 @@ services:
       - forwarders
 
   uf-log4j:
+    platform: linux/amd64
     image: splunk/universalforwarder:10.0.0
     hostname: uf-log4j
     environment:
@@ -178,6 +180,7 @@ services:
       - forwarders
 
   uf-scenario:
+    platform: linux/amd64
     image: splunk/universalforwarder:10.0.0
     hostname: uf-scenario
     environment:

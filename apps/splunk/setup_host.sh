@@ -24,20 +24,37 @@ RPM_PATH="$PAYLOAD_DIR/$RPM_FILE"
 DEB_URL="https://download.splunk.com/products/universalforwarder/releases/${SPLUNK_FORWARDER_VERSION}/linux/splunkforwarder-${SPLUNK_FORWARDER_VERSION}-${SPLUNK_FORWARDER_HASH}-linux-2.6-amd64.deb"
 RPM_URL="https://download.splunk.com/products/universalforwarder/releases/${SPLUNK_FORWARDER_VERSION}/linux/splunkforwarder-${SPLUNK_FORWARDER_VERSION}-${SPLUNK_FORWARDER_HASH}.x86_64.rpm"
 
+download_file() {
+    local url="$1"
+    local dest="$2"
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$dest" "$url"
+    elif command -v curl >/dev/null 2>&1; then
+        curl -fL "$url" -o "$dest"
+    else
+        echo "[WARN] Neither wget nor curl is available for downloads."
+        return 1
+    fi
+}
+
 if [ ! -f "$DEB_PATH" ]; then
     echo "[!] Debian Universal Forwarder ($DEB_FILE) not found."
     echo "[*] Downloading directly from Splunk..."
-    wget -O "$DEB_PATH" "$DEB_URL" || echo "[WARN] Failed to download $DEB_FILE"
+    download_file "$DEB_URL" "$DEB_PATH" || echo "[WARN] Failed to download $DEB_FILE"
 fi
 
 if [ ! -f "$RPM_PATH" ]; then
     echo "[!] RPM Universal Forwarder ($RPM_FILE) not found."
     echo "[*] Downloading directly from Splunk..."
-    wget -O "$RPM_PATH" "$RPM_URL" || echo "[WARN] Failed to download $RPM_FILE"
+    download_file "$RPM_URL" "$RPM_PATH" || echo "[WARN] Failed to download $RPM_FILE"
 fi
 
 if [ ! -f "$DEB_PATH" ] && [ ! -f "$RPM_PATH" ]; then
     echo "[FAIL] Could not download payloads automatically."
+    if [ "${SKIP_SERVE:-0}" = "1" ]; then
+        echo "[FAIL] SKIP_SERVE=1 mode is non-interactive; place payloads manually in: $PWD/$PAYLOAD_DIR/"
+        exit 1
+    fi
     echo "[*] Opening browser to Splunk Download page..."
     # Linux (Desktops)
     xdg-open "https://www.splunk.com/en_us/download/universal-forwarder.html" 2>/dev/null || echo "[WARN] Could not open browser. Please visit Splunk.com manually."
