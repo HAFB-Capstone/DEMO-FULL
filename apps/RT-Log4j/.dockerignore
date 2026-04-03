@@ -1,0 +1,7 @@
+.git
+.venv
+logs
+loot
+__pycache__
+*.pyc
+rt-log4j-attacker.tar

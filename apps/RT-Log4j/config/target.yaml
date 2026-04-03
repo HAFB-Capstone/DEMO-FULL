@@ -1,0 +1,10 @@
+# RT-template Target Configuration
+# Updated by setup/configure.sh for the active lab environment.
+
+target:
+  host: "192.168.x.x"       # <-- Target VM IP
+
+# Attacker listener
+attacker:
+  host: "192.168.x.x"       # <-- Your attacker/Kali IP
+  port: 9999

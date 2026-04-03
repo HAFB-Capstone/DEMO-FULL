@@ -1,0 +1,26 @@
+services:
+  attacker:
+    image: rt-log4j-attacker
+    build:
+      context: .
+      dockerfile: docker/attacker/Dockerfile
+    container_name: attacker
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    network_mode: host
+    volumes:
+      - ./tools:/app/tools
+      - ./config:/app/config
+      - ./loot:/app/loot
+      - ./logs:/app/logs
+    command: /bin/bash
+
+  training-ui:
+    image: nginx:alpine
+    container_name: rt-log4j-training-ui
+    ports:
+      - "8000:80"
+    volumes:
+      - ./docs/training-ui:/usr/share/nginx/html:ro
+    restart: unless-stopped
