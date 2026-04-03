@@ -1,132 +1,145 @@
 # HAFB Range Control
 
-`hafb-range-control` is the control repo for the Hill AFB capstone environment. It is organized around two project objectives:
+`hafb-range-control` is the control-plane repo for the Hill AFB capstone lab.
 
-- objective 1: infrastructure automation for training modules and vulnerable systems
-- objective 2: scoring and operator visibility for the training environment
+Its current MVP is intentionally small:
 
-The current MVP is intentionally centered on objective 1. It includes:
+1. deploy `SBOM-Training-Module` Module 1 with Ansible
+2. validate the install on a Linux target
+3. generate a simple readiness score report
 
-- a minimal Ansible deployment path
-- a simple readiness scoring layer
-- one concrete proof-of-concept target: `SBOM-Training-Module` Module 1 (`sbom-xray-lab`)
-- a path toward a dedicated Control VM architecture on Proxmox
+This repo does not own the training content itself. The content and offline installer live in `SBOM-Training-Module`. This repo is the automation and scoring layer around that content.
 
-This repo is intentionally narrow. It does not try to orchestrate the entire cyber range yet. The goal is to prove that:
+If you need the plain-English version first, start with [docs/how-it-works.md](docs/how-it-works.md).
 
-1. a central control repo can deploy one training module with Ansible
-2. the deployed module can be validated consistently
-3. a basic scoring process can evaluate whether that module is ready for use
-4. the control repo structure can later expand into a real scoring dashboard and additional modules
+## What this repo proves
 
-## Scope of the MVP
+The capstone proof is straightforward:
 
-This repo currently handles only one service/module:
+- one central repo can automate one air-gapped module end to end
+- deployment can be validated consistently
+- the result can be turned into a readiness score
+- the same control repo can later expand to more modules and a dashboard
 
-- `SBOM-Training-Module` Module 1 offline bundle (`sbom-xray-lab`)
+## Current scope
 
-The deploy path reuses the existing offline installer already shipped by the SBOM repo. Ansible stages that bundle on the target and runs the installer. The scoring script then checks that the lab exists, required files are present, tools are installed, and the module validator passes.
+Right now this repo supports one target only:
 
-The dashboard/scoring objective is present only as an early foundation right now. The long-term intent is:
+- `SBOM-Training-Module` Module 1 (`sbom-xray-lab`)
 
-- ingest Wazuh alerts from internal sources
-- perform basic service checks
-- expose a small web dashboard for operators or evaluators
+The runtime target for deploy and validate is a Linux VM such as `ubuntuBlue`. macOS is fine for writing the repo, reading docs, and running limited checks, but the actual module installer is Linux-targeted.
 
-That is not the current MVP. The current MVP is Ansible-first.
+## How it works
 
-## Target environment
+The end-to-end flow is:
 
-The actual Module 1 bundle is meant to run on a Linux analysis VM such as `ubuntuBlue`. The bundle includes Linux binaries like `syft`, so the full deploy and validate flow should run on Linux.
+1. Ansible reads an extracted Module 1 offline bundle from the controller machine.
+2. The `sbom_module1` role copies that bundle to the target VM.
+3. The role runs the module's own installer: `install-module1-offline.sh`.
+4. The role runs the module's own validator: `validate-module1-offline.sh`.
+5. `scoring/score_module1.py` checks the installed lab and writes score reports to `reports/`.
 
-macOS is still useful for:
-
-- writing and reviewing the control repo
-- running playbook syntax checks
-- running the scoring script logic
-
-But the real install target should be Linux.
-
-For the first real MVP test, the simplest path is:
-
-1. copy this repo to `ubuntuBlue`
-2. use the local `localhost` inventory on that VM
-3. point Ansible at the already-staged Module 1 bundle in `/tmp`
-4. run deploy, validate, and score directly on `ubuntuBlue`
-
-That avoids unnecessary SSH complexity and fits the air-gapped model better.
-
-The next step after that proof is a dedicated `Control VM`:
-
-1. create a Linux VM on Proxmox whose only job is automation and scoring
-2. host `hafb-range-control` on that VM
-3. run Ansible from that VM to `ubuntuBlue`, `ubuntuVictim`, and later other targets
-4. run the future scoring dashboard on that same VM
-
-## Implementation order
-
-Build this in three steps:
-
-1. `Phase 1`: prove the role locally on `ubuntuBlue` with the `localhost` inventory
-2. `Phase 2`: create a dedicated `controlOps` VM on Proxmox and verify Ansible SSH connectivity to managed VMs
-3. `Phase 3`: move scoring and dashboard services onto the Control VM and expand to additional targets
-
-This order keeps the first proof small. It avoids mixing Linux-bundle issues, SSH issues, and Control-VM build issues in the same test.
+In other words: this repo does not rebuild Module 1. It automates the existing offline bundle and scores the result.
 
 ## Repo layout
 
 ```text
 hafb-range-control/
-├── README.md
-├── Makefile
-├── ansible.cfg
-├── docs/
-│   ├── architecture.md
-│   ├── control-vm-rollout.md
-│   ├── demo-runbook.md
-│   ├── mvp.md
-│   └── proxmox-testing.md
-├── inventories/
-│   ├── localhost.yml
-│   ├── proxmox-lab.example.yml
-│   └── ubuntuBlue.example.yml
-├── playbooks/
-│   ├── check_connectivity.yml
-│   ├── deploy_sbom_module1.yml
-│   └── validate_sbom_module1.yml
-├── reports/
-│   └── .gitkeep
-├── roles/
-│   └── sbom_module1/
-│       ├── defaults/main.yml
-│       └── tasks/
-│           ├── deploy.yml
-│           ├── main.yml
-│           └── validate.yml
-├── scoring/
-│   ├── score_module1.py
-│   └── weights.json
-└── scripts/
-    ├── deploy.sh
-    ├── ping_targets.sh
-    ├── score.sh
-    └── validate.sh
+├── README.md                     # Short project overview and usage
+├── Makefile                      # Simple wrappers for deploy, validate, and score
+├── ansible.cfg                   # Default Ansible configuration
+├── docs/                         # Architecture, runbooks, and walkthrough docs
+├── inventories/                  # Localhost and remote inventory files
+├── playbooks/                    # Top-level deployment, validation, and connectivity playbooks
+├── reports/                      # Generated score outputs
+├── roles/sbom_module1/           # The Ansible role for SBOM Module 1
+├── scoring/                      # Readiness scoring script and weights
+└── scripts/                      # Convenience wrappers around Ansible and scoring
 ```
 
-## What Ansible is doing
+## Important files
 
-The Ansible side is deliberately basic:
+- `scripts/deploy.sh`: runs the deploy playbook
+- `scripts/validate.sh`: runs the validation playbook
+- `scripts/score.sh`: runs the Python scoring script
+- `playbooks/deploy_sbom_module1.yml`: deploy entrypoint
+- `playbooks/validate_sbom_module1.yml`: validation entrypoint
+- `roles/sbom_module1/tasks/deploy.yml`: bundle staging and install logic
+- `roles/sbom_module1/tasks/validate.yml`: validation logic
+- `scoring/score_module1.py`: readiness scoring logic
 
-1. find the extracted Module 1 offline bundle
-2. copy that bundle to a staging directory on the target
-3. run `install-module1-offline.sh`
-4. run `validate-module1-offline.sh`
+## Default paths and variables
 
-This is enough to demonstrate end-to-end infrastructure automation for one training module without rebuilding the module logic itself.
+By default, the repo looks for the extracted offline bundle at:
 
-## What the current scoring script is doing
+```text
+/Users/taylorpreslar/capstone/SBOM-Training-Module/deploy/releases/Module1-offline-bundle-sbom-xray-2026-03-25_004519
+```
 
-The scoring path is also intentionally simple. It awards points for the checks that matter to the MVP:
+Override that path when needed:
+
+```bash
+export SBOM_BUNDLE_SOURCE_DIR=/path/to/Module1-offline-bundle-sbom-xray
+```
+
+Other important defaults:
+
+- target staging directory: `~/hafb-staging/module1-offline-bundle`
+- installed lab directory: `~/labs/sbom-Module1-sbom-xray`
+- score reports: `reports/module1-score-latest.json` and `reports/module1-score-latest.md`
+
+## Inventories
+
+The repo ships with:
+
+- `inventories/localhost.yml`: for running directly on the Linux target VM
+- `inventories/ubuntuBlue.example.yml`: example single-target remote inventory
+- `inventories/proxmox-lab.example.yml`: example multi-VM Proxmox inventory
+
+Even though `ansible.cfg` defaults to `inventories/localhost.yml`, the wrapper scripts still require an explicit `-i` inventory argument. That guard is intentional so you do not accidentally deploy to the wrong machine.
+
+## Quick start
+
+### Recommended first proof: run directly on `ubuntuBlue`
+
+This is the simplest and cleanest capstone path.
+
+```bash
+cd ~/hafb-range-control
+export SBOM_BUNDLE_SOURCE_DIR=/tmp/Module1-offline-bundle-sbom-xray-2026-03-25_004519
+
+./scripts/deploy.sh -i inventories/localhost.yml
+./scripts/validate.sh -i inventories/localhost.yml
+./scripts/score.sh
+```
+
+This assumes:
+
+- the repo has been copied to `ubuntuBlue`
+- the Module 1 bundle is already staged in `/tmp`
+- Ansible is installed on `ubuntuBlue`
+
+### Next step: run from a dedicated Control VM
+
+After the localhost proof works, move to the intended architecture:
+
+```bash
+cd ~/hafb-range-control
+cp inventories/proxmox-lab.example.yml inventories/proxmox-lab.yml
+$EDITOR inventories/proxmox-lab.yml
+
+./scripts/ping_targets.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
+export SBOM_BUNDLE_SOURCE_DIR=~/bundles/Module1-offline-bundle-sbom-xray-2026-03-25_004519
+
+./scripts/deploy.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
+./scripts/validate.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
+```
+
+In that model, the extracted bundle must exist on the controller VM first. Ansible copies it from the controller to the target.
+
+## Score output
+
+The scoring script checks:
 
 - bundle source exists
 - installed lab directory exists
@@ -137,112 +150,36 @@ The scoring path is also intentionally simple. It awards points for the checks t
 - `~/labs/sbom-xray` compatibility symlink exists
 - the official Module 1 validator passes
 
-This is a readiness score, not the final cyber-range dashboard. It is there to show the pattern of centralized evaluation after automation.
+It writes:
 
-The output is written to:
+- `reports/module1-score-latest.json`
+- `reports/module1-score-latest.md`
 
-- [module1-score-latest.json](/Users/taylorpreslar/capstone/hafb-range-control/reports/module1-score-latest.json)
-- [module1-score-latest.md](/Users/taylorpreslar/capstone/hafb-range-control/reports/module1-score-latest.md)
+## Make targets
 
-## Defaults
-
-By default, the repo expects the extracted bundle to exist at the sibling repo path:
-
-`/Users/taylorpreslar/capstone/SBOM-Training-Module/deploy/releases/Module1-offline-bundle-sbom-xray-2026-03-25_004519`
-
-Override that path with:
+You can use the shell wrappers directly, or use `make`:
 
 ```bash
-export SBOM_BUNDLE_SOURCE_DIR=/path/to/Module1-offline-bundle-sbom-xray
+make help
+make deploy INVENTORY=inventories/localhost.yml
+make validate INVENTORY=inventories/localhost.yml
+make score
 ```
 
-The default target inventory is local:
+## Documentation
 
-- [localhost.yml](/Users/taylorpreslar/capstone/hafb-range-control/inventories/localhost.yml)
+- [docs/how-it-works.md](docs/how-it-works.md): plain-English project walkthrough
+- [docs/demo-runbook.md](docs/demo-runbook.md): capstone demo sequence
+- [docs/architecture.md](docs/architecture.md): current and future architecture
+- [docs/control-vm-rollout.md](docs/control-vm-rollout.md): Control VM setup plan
+- [docs/proxmox-testing.md](docs/proxmox-testing.md): Proxmox testing notes
+- [docs/mvp.md](docs/mvp.md): short MVP definition
 
-For the future Control VM model, copy and edit:
+## Capstone explanation
 
-- [ubuntuBlue.example.yml](/Users/taylorpreslar/capstone/hafb-range-control/inventories/ubuntuBlue.example.yml)
-- [proxmox-lab.example.yml](/Users/taylorpreslar/capstone/hafb-range-control/inventories/proxmox-lab.example.yml)
+The cleanest way to describe this repo is:
 
-## Quick start
-
-### Phase 0: local authoring and syntax checks on your Mac
-
-```bash
-cd /Users/taylorpreslar/capstone/hafb-range-control
-
-ansible-playbook --syntax-check playbooks/deploy_sbom_module1.yml
-ansible-playbook --syntax-check playbooks/validate_sbom_module1.yml
-
-# Optional: local scoring logic only
-./scripts/score.sh --skip-validator
-```
-
-macOS is not the runtime target for the Module 1 installer. The full deploy and validate flow is expected to fail there by design.
-
-### Phase 1: first real air-gapped test on `ubuntuBlue`
-
-```bash
-cd ~/hafb-range-control
-
-export SBOM_BUNDLE_SOURCE_DIR=/tmp/Module1-offline-bundle-sbom-xray-2026-03-25_004519
-
-./scripts/deploy.sh -i inventories/localhost.yml
-./scripts/validate.sh -i inventories/localhost.yml
-./scripts/score.sh
-```
-
-That path assumes:
-
-- the repo has been copied to `ubuntuBlue`
-- the Module 1 bundle is already staged in `/tmp`
-- the test is being run directly on the Linux VM with the default `localhost` inventory
-
-### Phase 2: dedicated Control VM on Proxmox
-
-On the future Control VM, the first thing you should prove is Ansible connectivity to the target VMs:
-
-```bash
-cd ~/hafb-range-control
-cp inventories/proxmox-lab.example.yml inventories/proxmox-lab.yml
-$EDITOR inventories/proxmox-lab.yml
-
-./scripts/ping_targets.sh -i inventories/proxmox-lab.yml
-```
-
-Once connectivity works, point deployment at `ubuntuBlue` and run the real module playbooks from the Control VM.
-
-In this architecture, the offline bundle must exist on the Control VM first. The role copies the bundle from the Control VM to the target Linux VM during deployment.
-For the current MVP, the readiness score is still easiest to run on `ubuntuBlue` because it checks local files and local tool availability there.
-
-## Demo story
-
-For the capstone, the clean explanation is:
-
-- `SBOM-Training-Module` owns the actual training content and offline installer
-- `hafb-range-control` owns automation first, with scoring/dashboard capabilities added incrementally
-- we are proving the pattern on one module first
-- later, additional modules, vulnerable services, and a Wazuh-backed scoring dashboard can be added to the same control repo
-
-## Validation status
-
-This repo was validated locally for:
-
-- shell script syntax
-- Python syntax and scoring script execution
-
-If `ansible-playbook` is installed on the machine, you can run:
-
-```bash
-ansible-playbook --syntax-check playbooks/deploy_sbom_module1.yml
-ansible-playbook --syntax-check playbooks/validate_sbom_module1.yml
-```
-
-## Supporting docs
-
-- [architecture.md](/Users/taylorpreslar/capstone/hafb-range-control/docs/architecture.md)
-- [control-vm-rollout.md](/Users/taylorpreslar/capstone/hafb-range-control/docs/control-vm-rollout.md)
-- [demo-runbook.md](/Users/taylorpreslar/capstone/hafb-range-control/docs/demo-runbook.md)
-- [mvp.md](/Users/taylorpreslar/capstone/hafb-range-control/docs/mvp.md)
-- [proxmox-testing.md](/Users/taylorpreslar/capstone/hafb-range-control/docs/proxmox-testing.md)
+- `SBOM-Training-Module` owns the training content and installer
+- `hafb-range-control` owns automation, validation orchestration, and scoring
+- the current MVP proves the pattern on one module first
+- later phases can add more modules, more targets, and a dashboard

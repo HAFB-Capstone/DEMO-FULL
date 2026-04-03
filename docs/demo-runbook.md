@@ -23,8 +23,8 @@ cd ~/hafb-range-control
 
 export SBOM_BUNDLE_SOURCE_DIR=/tmp/Module1-offline-bundle-sbom-xray-2026-03-25_004519
 
-./scripts/deploy.sh
-./scripts/validate.sh
+./scripts/deploy.sh -i inventories/localhost.yml
+./scripts/validate.sh -i inventories/localhost.yml
 ./scripts/score.sh
 ```
 

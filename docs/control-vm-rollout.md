@@ -133,7 +133,7 @@ If direct SSH is not allowed and `bastion` must be used, add `ansible_ssh_common
 Run:
 
 ```bash
-./scripts/ping_targets.sh -i inventories/proxmox-lab.yml
+./scripts/ping_targets.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
 ```
 
 What success looks like:
@@ -161,6 +161,23 @@ Important: `sbom_bundle_source_dir` is read on the Ansible controller. In the Co
 ./scripts/validate.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
 ```
 
+Important:
+
+- `deploy.sh` and `validate.sh` require an explicit `-i` inventory argument
+- this is intentional so the wrapper does not fall back to `inventories/localhost.yml` and accidentally act on the controller
+- `SBOM_BUNDLE_SOURCE_DIR` is read on `controlOps`, not on `ubuntuBlue`
+
+What success looks like:
+
+- deploy stages the bundle on `ubuntuBlue` and runs the offline installer there
+- validate runs the Module 1 validator on `ubuntuBlue`
+- validation output shows the pinned tool versions and expected component-count band
+- current known-good output includes:
+  - `syft 1.23.1`
+  - `jq-1.7`
+  - `flight-path components: 3362`
+  - `radar-control components: 3351`
+
 ### 11. Run the readiness score for the current MVP
 
 The current `score.sh` checks local filesystem paths and local tool availability. That means it is still easiest to run on `ubuntuBlue` for the first MVP proof.
@@ -172,6 +189,18 @@ ssh student@ubuntuBlue 'cd ~/hafb-range-control && ./scripts/score.sh'
 ```
 
 Later, that readiness score should be moved into an Ansible-collected report or the future Control-VM dashboard.
+
+### 12. Reset strategy for milestone 1
+
+For the first milestone, prefer a Proxmox snapshot-based reset over trying to perfectly reverse every file change made by the installer.
+
+Recommended approach:
+
+1. create a snapshot of `ubuntuBlue` before the first deploy test
+2. use Ansible deploy and validate from `controlOps`
+3. if you need a clean retry, roll `ubuntuBlue` back to that snapshot
+
+This keeps the first milestone safe and repeatable while the automation path is still being proven.
 
 ## What to prove in testing
 

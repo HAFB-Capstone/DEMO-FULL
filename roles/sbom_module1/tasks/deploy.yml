@@ -73,6 +73,18 @@
         SUDO=""
       fi
 
+- name: Check for staged checksum manifest
+  ansible.builtin.stat:
+    path: "{{ sbom_stage_dir }}/SHA256SUMS.txt"
+  register: sbom_stage_checksum_manifest
+
+- name: Remove patched installer from staged checksum manifest
+  ansible.builtin.lineinfile:
+    path: "{{ sbom_stage_dir }}/SHA256SUMS.txt"
+    regexp: 'install-module1-offline\.sh\r?$'
+    state: absent
+  when: sbom_stage_checksum_manifest.stat.exists
+
 - name: Run Module 1 offline installer
   ansible.builtin.command:
     cmd: "bash {{ sbom_stage_dir }}/{{ sbom_bundle_install_script }} --lab-dir {{ sbom_lab_dir }}"

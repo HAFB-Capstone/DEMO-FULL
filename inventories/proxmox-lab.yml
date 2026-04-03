@@ -11,5 +11,5 @@ all:
           hosts:
             ubuntuBlue:
               ansible_host: 192.168.86.37
-              ansible_user: student
+              ansible_user: hafb
               ansible_become: false
