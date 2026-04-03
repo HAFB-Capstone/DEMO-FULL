@@ -9,6 +9,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def index():
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    return "UP", 200
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     file = request.files['logfile']
