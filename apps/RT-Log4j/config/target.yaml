@@ -1,10 +1,11 @@
-# RT-template Target Configuration
-# Updated by setup/configure.sh for the active lab environment.
+# RT-Log4j target configuration (override with setup/configure.sh for VM labs).
+#
+# DEMO-FULL (root docker-compose.yaml): compose sets TARGET_HOST, ATTACKER_HOST,
+# and LOG4J_* ports via environment — defaults below match that stack.
 
 target:
-  host: "192.168.x.x"       # <-- Target VM IP
+  host: "host.docker.internal"
 
-# Attacker listener
 attacker:
-  host: "192.168.x.x"       # <-- Your attacker/Kali IP
+  host: "rt-log4j-attacker"
   port: 9999

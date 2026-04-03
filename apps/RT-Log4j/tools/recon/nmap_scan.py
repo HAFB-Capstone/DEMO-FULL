@@ -38,7 +38,14 @@ def run_nmap(host: str):
         },
         {
             "label": "HTTP script scan on common web ports",
-            "cmd": ["nmap", "-p", "80,443,8000,8001,8002,8003", "--script", "http-enum,http-headers,http-methods", host],
+            "cmd": [
+                "nmap",
+                "-p",
+                "80,443,8000,8001,8002,8003,8101,8102,8103,8180",
+                "--script",
+                "http-enum,http-headers,http-methods",
+                host,
+            ],
         },
     ]
 
