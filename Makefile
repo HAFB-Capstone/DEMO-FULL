@@ -50,6 +50,8 @@ ps:
 validate:
 	@echo "[*] Validating Splunk API..."
 	@$(COMPOSE) exec -T splunk sh -c 'curl -sk -u "admin:$$SPLUNK_PASSWORD" "https://localhost:8089/services/server/info?output_mode=json" | grep -q "\"version\"" && echo "[OK] Splunk API responding" || echo "[FAIL] Splunk API check failed"'
+	@echo "[*] Validating Scoring Ops..."
+	@curl -sf http://localhost:8090/healthz | grep -q '"status":"ok"' && echo "[OK] Scoring dashboard /healthz" || echo "[FAIL] Scoring dashboard unreachable"
 	@echo "[*] Validating Log4j Services..."
 	@chmod +x apps/Log4j-Vulnerable/tools/test/test_services.sh
 	@bash apps/Log4j-Vulnerable/tools/test/test_services.sh | grep -E "PASS|FAIL"
@@ -70,11 +72,22 @@ urls:
 	@echo "  Training UI:       http://localhost:8020"
 	@echo ""
 	@echo "==============================================================="
+	@echo "  SBOM / SUPPLY CHAIN LAB (CLI only — no web URL)"
+	@echo "==============================================================="
+	@echo "  Enter the lab container (repo bind-mounted at /lab):"
+	@echo "    make shell SERVICE=sbom-xray-lab"
+	@echo "    $(COMPOSE) exec sbom-xray-lab bash"
+	@echo "  First-time setup inside the container:"
+	@echo "    $(COMPOSE) exec sbom-xray-lab bash -c 'SBOM_XRAY_CONTAINER=1 bash /lab/install-module1-offline.sh --lab-dir /lab'"
+	@echo "  Docs: apps/SBOM-XRay/student/sbom-xray-lab-student-guide.md"
+	@echo ""
+	@echo "==============================================================="
 	@echo "  SERVICES"
 	@echo "==============================================================="
 	@echo "  Auth Service:      http://localhost:8101"
 	@echo "  Inventory Service: http://localhost:8102"
 	@echo "  Status Service:    http://localhost:8103"
+	@echo "  Scoring Dashboard: http://localhost:8090"
 	@echo "==============================================================="
 
 test:

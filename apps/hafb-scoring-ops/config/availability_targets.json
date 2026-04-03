@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Log4j-Vulnerable",
+    "checks": [
+      {
+        "id": "log4j-auth-health",
+        "name": "Auth Service",
+        "url": "http://log4j-auth-service:8001/health"
+      },
+      {
+        "id": "log4j-inventory-health",
+        "name": "Inventory Service",
+        "url": "http://log4j-inventory-service:8002/health"
+      },
+      {
+        "id": "log4j-status-health",
+        "name": "Status Service",
+        "url": "http://log4j-status-service:8003/health"
+      }
+    ]
+  },
+  {
+    "name": "MIL-STD-1553-Vulnerable",
+    "checks": [
+      {
+        "id": "mil-logistics-root",
+        "name": "Logistics Portal",
+        "url": "http://logistics-portal:8080/"
+      }
+    ]
+  }
+]

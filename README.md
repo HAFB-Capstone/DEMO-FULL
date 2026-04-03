@@ -37,6 +37,10 @@ flowchart TB
         SX["SBOM-XRay CLI"]
     end
 
+    subgraph score["📊 Scoring Ops"]
+        SO["Health dashboard<br/>:8090"]
+    end
+
     %% Attack Paths
     RT -.->|1. Log4Shell JNDI| VA
     RT -.->|2. Unsafe Upload| LP
@@ -126,6 +130,10 @@ Use Splunk to detect attacks and learn how to patch the environment.
 *   **Access**: `http://localhost:8000` (User: `admin` / Pass: Check `.env`)
 *   **Dashboards**: Open the "Blue Team Summary" dashboard to see failed logins, file uploads, and bus activity.
 *   **Field Parsing**: Logs are pre-parsed into fields like `loglevel`, `src_ip`, `method`, and `status_code` for easy searching.
+
+### Lab health & scoring (`hafb-scoring-ops`)
+*   **Access**: `http://localhost:8090` — overall score and per-family HTTP checks against the Log4j and MIL-STD-1553 labs.
+*   Use **Start** for live probes inside Compose, or **Demo** for deterministic scripted scenarios (good for dry runs without touching victims).
 
 ### Fixing the Exploits
 *   **Log4j**: Update the `pom.xml` in the service directories to use Log4j 2.17.1+ and rebuild.

@@ -1,0 +1,17 @@
+{
+  "score_floor": 0,
+  "score_ceiling": 100,
+  "resolved_bonus": 5,
+  "severity_impacts": {
+    "low": 1,
+    "medium": 4,
+    "high": 9,
+    "critical": 14
+  },
+  "service_penalties": {
+    "healthy": 0,
+    "degraded": 6,
+    "unhealthy": 12
+  }
+}
+

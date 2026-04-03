@@ -1,0 +1,87 @@
+{
+  "name": "controlops_demo_exercise",
+  "default_delay_seconds": 8,
+  "steps": [
+    {
+      "label": "Telemetry Spike",
+      "delay_seconds": 6,
+      "ingest_files": ["wazuh_spike.json"],
+      "operator_note": "Higher-severity Wazuh records arrived from ubuntuBlue. controlOps remains available, but Module 1 and the Wazuh surface are showing visible pressure in the operator view.",
+      "note_severity": "high",
+      "service_updates": [
+        {
+          "id": "svc-ubuntu-blue-module1",
+          "status": "degraded",
+          "latency_ms": 412,
+          "detail": "Module 1 validation surface is still reachable, but response time is elevated while telemetry is being triaged."
+        },
+        {
+          "id": "svc-ubuntu-blue-wazuh-manager",
+          "status": "degraded",
+          "latency_ms": 214,
+          "detail": "Wazuh manager API is responding slowly while controlOps normalizes the increased alert volume."
+        },
+        {
+          "id": "svc-ubuntu-blue-wazuh-dashboard",
+          "status": "unhealthy",
+          "latency_ms": 0,
+          "detail": "Wazuh dashboard is not responding to analyst requests during the spike window."
+        }
+      ]
+    },
+    {
+      "label": "Containment",
+      "delay_seconds": 10,
+      "ingest_files": ["wazuh_containment.json"],
+      "operator_note": "Containment actions are in progress. The Module 1 workspace stabilizes, Wazuh dashboard access partially recovers, and manager latency remains elevated while backlog is processed.",
+      "note_severity": "medium",
+      "service_updates": [
+        {
+          "id": "svc-ubuntu-blue-module1",
+          "status": "healthy",
+          "latency_ms": 91,
+          "detail": "Module 1 validation surface returned to a normal operating band after containment."
+        },
+        {
+          "id": "svc-ubuntu-blue-wazuh-dashboard",
+          "status": "degraded",
+          "latency_ms": 193,
+          "detail": "Wazuh dashboard is responding again, but operator workflows remain slower than normal."
+        },
+        {
+          "id": "svc-ubuntu-blue-wazuh-manager",
+          "status": "degraded",
+          "latency_ms": 166,
+          "detail": "Wazuh manager API remains under elevated ingest load while containment records are normalized."
+        }
+      ]
+    },
+    {
+      "label": "Recovery",
+      "delay_seconds": 10,
+      "ingest_files": ["wazuh_recovery.json"],
+      "operator_note": "Recovery actions restored the Module 1 workspace and Wazuh stack to near-baseline performance. controlOps keeps one contained incident open for monitoring in the after-action window.",
+      "note_severity": "low",
+      "service_updates": [
+        {
+          "id": "svc-ubuntu-blue-wazuh-dashboard",
+          "status": "healthy",
+          "latency_ms": 44,
+          "detail": "Wazuh dashboard is reachable again for analyst workflows."
+        },
+        {
+          "id": "svc-ubuntu-blue-wazuh-manager",
+          "status": "healthy",
+          "latency_ms": 31,
+          "detail": "Wazuh manager API returned to nominal responsiveness."
+        },
+        {
+          "id": "svc-ubuntu-blue-module1",
+          "status": "healthy",
+          "latency_ms": 67,
+          "detail": "Module 1 remains validated and ready for student use after recovery."
+        }
+      ]
+    }
+  ]
+}

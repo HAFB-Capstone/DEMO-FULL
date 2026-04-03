@@ -173,6 +173,7 @@ When you are in a repo, follow that repo's process docs for **how** to work; use
   - [`apps/Log4j-Vulnerable/README.md`](apps/Log4j-Vulnerable/README.md) — Log4j / Log4Shell lab.
   - [`apps/MIL-STD-1553-Vulnerable/README.md`](apps/MIL-STD-1553-Vulnerable/README.md) — logistics portal, maintenance bridge, serial bus.
   - [`apps/splunk/README.md`](apps/splunk/README.md) — Splunk image, analytics, forwarder payloads.
+  - [`apps/hafb-scoring-ops/README.md`](apps/hafb-scoring-ops/README.md) — scoring / health dashboard for lab endpoints.
 - **Environment:** [`.env.example`](.env.example) — copy to `.env` at repo root (e.g. `SPLUNK_PASSWORD`).
 - **Org-wide background** (not in this repo): stakeholder context and central docs live in **HAFB-Capstone-Project** and related org repositories (see Sections 3–4).
 
@@ -190,6 +191,7 @@ When you are in a repo, follow that repo's process docs for **how** to work; use
 | **Log4j (exploited)** | `apps/Log4j-Vulnerable/` | Intentionally vulnerable Log4j 2.x services and a safe control service; Log4Shell-style training. |
 | **MIL-STD-1553** | `apps/MIL-STD-1553-Vulnerable/` | Multi-zone scenario (portal, maintenance terminal, UDP serial bus) aligned to mission-relevant OT-style training. |
 | **Blue team / monitoring** | `apps/splunk/` | Splunk Enterprise, payload server for forwarders, dashboards/rules under `apps/splunk/analytics/`. |
+| **Health / scoring dashboard** | `apps/hafb-scoring-ops/` | FastAPI dashboard that probes Log4j and MIL-STD-1553 lab HTTP endpoints; live checks and deterministic demo mode (`http://localhost:8090`). |
 
 **Splunk status:** End-to-end Splunk monitoring is **Stable and Verified**. 
 - **Telemetry**: All services (`log4j`, `mil1553`) report to Splunk via optimized Universal Forwarders.

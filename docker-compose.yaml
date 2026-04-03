@@ -1,5 +1,5 @@
 # HAFB DEMO-FULL — red/blue scenario stack (all apps under ./apps)
-# Port map avoids collisions: Splunk UI 9000, Log4j 8101–8103, MIL logistics 9080, payload 8001
+# Port map avoids collisions: Splunk UI 8000, Log4j 8101–8103, MIL logistics 9080, payload 8001, scoring 8090
 name: hafb-demo
 
 services:
@@ -164,6 +164,22 @@ services:
     command: ["sleep", "infinity"]
     networks:
       - sbom-lab
+    restart: unless-stopped
+
+  # ----- Health / scoring dashboard (probes Log4j + MIL services over lab networks) -----
+  scoring-ops:
+    build: ./apps/hafb-scoring-ops
+    hostname: scoring-ops
+    ports:
+      - "8090:8080"
+    networks:
+      - log4j-net
+      - mil1553-public
+    depends_on:
+      - log4j-auth-service
+      - log4j-inventory-service
+      - log4j-status-service
+      - logistics-portal
     restart: unless-stopped
 
   # ----- Optional: Universal Forwarder containers (Docker “one UF per segment”) -----

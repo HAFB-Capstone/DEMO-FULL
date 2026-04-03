@@ -1,0 +1,90 @@
+[
+  {
+    "id": "1741305680.40001",
+    "timestamp": "2026-03-07T13:01:20Z",
+    "agent": {
+      "id": "002",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "31110",
+      "level": 4,
+      "description": "module1: workspace returned to validated state",
+      "groups": ["module1", "availability", "recovery"]
+    },
+    "location": "/home/hafb/labs/sbom-Module1-sbom-xray",
+    "full_log": "Module 1 validator passed again after cleanup and verification.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "module1",
+      "action": "remediated",
+      "incident_key": "module1-validator-drift"
+    }
+  },
+  {
+    "id": "1741305684.40002",
+    "timestamp": "2026-03-07T13:01:24Z",
+    "agent": {
+      "id": "003",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "18107",
+      "level": 2,
+      "description": "wazuh: dashboard responsiveness restored",
+      "groups": ["wazuh", "telemetry", "recovery"]
+    },
+    "location": "/var/ossec/logs/alerts/alerts.json",
+    "full_log": "Wazuh dashboard availability returned to baseline after recovery actions.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "wazuh",
+      "action": "resolved",
+      "incident_key": "wazuh-dashboard-availability"
+    }
+  },
+  {
+    "id": "1741305688.40003",
+    "timestamp": "2026-03-07T13:01:28Z",
+    "agent": {
+      "id": "003",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "18108",
+      "level": 3,
+      "description": "wazuh: ingest backlog cleared and API latency normalized",
+      "groups": ["wazuh", "telemetry", "recovery"]
+    },
+    "location": "/var/ossec/logs/ossec.log",
+    "full_log": "Manager ingest backlog cleared and API response time returned to baseline.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "wazuh",
+      "action": "resolved",
+      "incident_key": "wazuh-ingest-backlog"
+    }
+  },
+  {
+    "id": "1741305692.40004",
+    "timestamp": "2026-03-07T13:01:32Z",
+    "agent": {
+      "id": "001",
+      "name": "controlOps"
+    },
+    "rule": {
+      "id": "5718",
+      "level": 4,
+      "description": "sshd: brute force source blocked on control plane",
+      "groups": ["authentication_failed", "ssh", "identity", "recovery", "controlplane"]
+    },
+    "location": "/var/log/auth.log",
+    "full_log": "Brute force source was blocked at the network boundary. Residual monitoring remains in place.",
+    "data": {
+      "hostname": "controlOps",
+      "service": "controlplane",
+      "action": "contained",
+      "incident_key": "auth-bruteforce-controlops"
+    }
+  }
+]

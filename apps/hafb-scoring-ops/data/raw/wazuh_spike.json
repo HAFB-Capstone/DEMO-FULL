@@ -1,0 +1,90 @@
+[
+  {
+    "id": "1741305635.20001",
+    "timestamp": "2026-03-07T13:00:35Z",
+    "agent": {
+      "id": "002",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "31103",
+      "level": 9,
+      "description": "module1: validator drift detected in student workspace",
+      "groups": ["module1", "availability", "training"]
+    },
+    "location": "/home/hafb/labs/sbom-Module1-sbom-xray",
+    "full_log": "Validation drift detected in the Module 1 student workspace during the telemetry spike window.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "module1",
+      "action": "open",
+      "incident_key": "module1-validator-drift"
+    }
+  },
+  {
+    "id": "1741305640.20002",
+    "timestamp": "2026-03-07T13:00:40Z",
+    "agent": {
+      "id": "003",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "18120",
+      "level": 11,
+      "description": "wazuh: manager ingest backlog exceeded threshold",
+      "groups": ["wazuh", "telemetry", "pipeline"]
+    },
+    "location": "/var/ossec/logs/ossec.log",
+    "full_log": "Manager ingest queue exceeded threshold while alerts were being normalized.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "wazuh",
+      "action": "open",
+      "incident_key": "wazuh-ingest-backlog"
+    }
+  },
+  {
+    "id": "1741305644.20003",
+    "timestamp": "2026-03-07T13:00:44Z",
+    "agent": {
+      "id": "001",
+      "name": "controlOps"
+    },
+    "rule": {
+      "id": "5712",
+      "level": 8,
+      "description": "sshd: brute force behavior exceeded threshold on control plane",
+      "groups": ["authentication_failed", "ssh", "identity", "controlplane"]
+    },
+    "location": "/var/log/auth.log",
+    "full_log": "Multiple failed SSH logins observed against controlOps from an untrusted source.",
+    "data": {
+      "hostname": "controlOps",
+      "service": "controlplane",
+      "action": "open",
+      "incident_key": "auth-bruteforce-controlops"
+    }
+  },
+  {
+    "id": "1741305648.20004",
+    "timestamp": "2026-03-07T13:00:48Z",
+    "agent": {
+      "id": "003",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "18122",
+      "level": 7,
+      "description": "wazuh: dashboard availability threshold exceeded",
+      "groups": ["wazuh", "dashboard", "telemetry"]
+    },
+    "location": "/var/ossec/logs/alerts/alerts.json",
+    "full_log": "Dashboard availability checks exceeded threshold for analyst workflows.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "wazuh",
+      "action": "open",
+      "incident_key": "wazuh-dashboard-availability"
+    }
+  }
+]

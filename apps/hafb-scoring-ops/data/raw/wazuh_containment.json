@@ -1,0 +1,46 @@
+[
+  {
+    "id": "1741305660.30001",
+    "timestamp": "2026-03-07T13:01:00Z",
+    "agent": {
+      "id": "002",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "61650",
+      "level": 8,
+      "description": "module1: workspace isolated for validation and triage",
+      "groups": ["module1", "containment", "response"]
+    },
+    "location": "/home/hafb/labs/sbom-Module1-sbom-xray",
+    "full_log": "Module 1 workspace isolated temporarily while validation artifacts are reviewed.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "module1",
+      "action": "contained",
+      "incident_key": "module1-validator-drift"
+    }
+  },
+  {
+    "id": "1741305665.30002",
+    "timestamp": "2026-03-07T13:01:05Z",
+    "agent": {
+      "id": "003",
+      "name": "ubuntuBlue"
+    },
+    "rule": {
+      "id": "18114",
+      "level": 9,
+      "description": "wazuh: manager backlog remains elevated during containment",
+      "groups": ["wazuh", "agent", "telemetry"]
+    },
+    "location": "/var/ossec/logs/alerts/alerts.json",
+    "full_log": "Manager backlog remains elevated while containment workflow is completed.",
+    "data": {
+      "hostname": "ubuntuBlue",
+      "service": "wazuh",
+      "action": "contained",
+      "incident_key": "wazuh-ingest-backlog"
+    }
+  }
+]

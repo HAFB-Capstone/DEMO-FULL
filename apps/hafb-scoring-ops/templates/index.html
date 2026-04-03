@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ page_title }}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="screen-grid"></div>
+    <main class="layout">
+      <header class="hero panel">
+        <div>
+          <div class="eyebrow">Hill AFB Capstone | Internal Only</div>
+          <h1>Health Dashboard</h1>
+          <p class="hero-copy">
+            Minimal operator view showing the current score and the vulnerability
+            families currently being tracked.
+          </p>
+          <div class="hero-strip">
+            <span class="hero-chip">Current score</span>
+            <span class="hero-chip">Tracked vulnerabilities</span>
+          </div>
+        </div>
+        <div class="hero-side">
+          <div class="badge badge-airgap">AIR GAPPED / INTERNAL ONLY</div>
+          <div class="hero-meta solo-meta">
+            <div>
+              <span class="meta-label">Status</span>
+              <strong id="mission-status-label">Nominal</strong>
+            </div>
+            <div>
+              <span class="meta-label">Mode</span>
+              <strong id="monitor-mode-label">Idle</strong>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="focus-grid">
+        <article class="panel score-panel">
+          <div class="panel-header">
+            <h2>Current Score</h2>
+            <span class="small-label" id="generated-at">Awaiting data</span>
+          </div>
+          <div class="score-ring-wrap">
+            <div class="score-ring" id="score-ring">
+              <div class="score-ring-inner">
+                <span id="score-ring-value">100</span>
+                <small>out of 100</small>
+              </div>
+            </div>
+            <div class="score-context">
+              <div class="status-row">
+                <span class="status-chip" id="mission-status-chip">Nominal</span>
+              </div>
+              <p id="mission-status-detail">
+                The dashboard is waiting for its current scoring snapshot.
+              </p>
+              <div class="monitor-meta-row">
+                <div class="monitor-meta-box">
+                  <span class="meta-label">Timer</span>
+                  <strong id="monitor-timer">00:00</strong>
+                </div>
+                <div class="monitor-meta-box">
+                  <span class="meta-label">Last check</span>
+                  <strong id="monitor-last-checked">n/a</strong>
+                </div>
+              </div>
+              <div class="button-row">
+                <button id="start-btn" class="primary">Start</button>
+                <button id="demo-btn" class="secondary">Demo</button>
+                <button id="stop-btn" class="secondary">Stop</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel compact-panel">
+          <div class="panel-header">
+            <h2>Tracked Vulnerabilities</h2>
+            <span class="small-label" id="monitor-label">Awaiting start</span>
+          </div>
+          <div id="vulnerability-scope" class="source-stack"></div>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      window.dashboardConfig = {
+        stateUrl: "{{ api_state_url }}"
+      };
+    </script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
