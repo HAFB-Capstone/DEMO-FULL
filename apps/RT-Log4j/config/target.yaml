@@ -1,0 +1,11 @@
+# RT-Log4j target configuration (override with setup/configure.sh for VM labs).
+#
+# DEMO-FULL (root docker-compose.yaml): compose sets TARGET_HOST, ATTACKER_HOST,
+# and LOG4J_* ports via environment — defaults below match that stack.
+
+target:
+  host: "host.docker.internal"
+
+attacker:
+  host: "rt-log4j-attacker"
+  port: 9999

@@ -4,7 +4,8 @@ SHELL := /bin/bash
 
 .PHONY: help setup build up down restart logs ps clean splunk-reset forwarders-up forwarders-down validate urls \
 	sbom-shell sbom-validate \
-	test-log4j test-mil1553-chain test-mil1553-tools reset-log4j reset-mil1553
+	test-log4j test-mil1553-chain test-mil1553-tools reset-log4j reset-mil1553 \
+	rt-log4j-shell
 
 help:
 	@echo "HAFB DEMO-FULL"
@@ -29,6 +30,7 @@ help:
 	@echo "  make test-mil1553-tools — ephemeral serial-bus + attacker image tests"
 	@echo "  make reset-log4j        — recreate Log4j lab containers only"
 	@echo "  make reset-mil1553      — recreate MIL-STD-1553 containers only"
+	@echo "  make rt-log4j-shell     — shell in RT-Log4j attacker (recon / Log4Shell tooling)"
 	@echo "See README.md for demo walkthrough, architecture, and attack routes."
 
 setup:
@@ -89,6 +91,9 @@ urls:
 	@echo "Log4j auth:        http://localhost:8101"
 	@echo "Log4j inventory:   http://localhost:8102"
 	@echo "Log4j status:      http://localhost:8103"
+	@echo "Log4j vuln app:    http://localhost:8180  (christophetd; use X-Api-Version header on GET /)"
+	@echo "RT-Log4j training UI: http://localhost:8020"
+	@echo "RT-Log4j attacker:    docker compose exec -it rt-log4j-attacker bash  (or: make rt-log4j-shell)"
 	@echo "MIL serial bus UDP: localhost:5001"
 	@echo "SBOM-XRay lab:     docker compose exec sbom-xray-lab bash  (CLI only; no HTTP port)"
 
@@ -117,3 +122,6 @@ reset-log4j:
 reset-mil1553:
 	@chmod +x apps/MIL-STD-1553-Vulnerable/restore.sh
 	@bash apps/MIL-STD-1553-Vulnerable/restore.sh
+
+rt-log4j-shell:
+	$(COMPOSE) exec rt-log4j-attacker bash

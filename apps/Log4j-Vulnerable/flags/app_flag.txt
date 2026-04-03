@@ -1,0 +1,1 @@
+FLAG{log4shell_rce_confirmed_CVE-2021-44228}

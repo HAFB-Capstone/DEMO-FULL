@@ -1,5 +1,5 @@
 # HAFB DEMO-FULL — red/blue scenario stack (all apps under ./apps)
-# Port map avoids collisions: Splunk UI 9000, Log4j 8101–8103, MIL logistics 9080, payload 8001
+# Port map avoids collisions: Splunk UI 9000, Log4j 8101–8103 + christophetd app 8180, MIL logistics 9080, payload 8001
 name: hafb-demo
 
 services:
@@ -139,6 +139,58 @@ services:
     entrypoint: ["sh", "-c", "python app.py 2>&1 | tee /logs/status_service.log"]
     volumes:
       - log4j_logs:/logs
+
+  log4j-vulnerable-app:
+    image: ghcr.io/christophetd/log4shell-vulnerable-app@sha256:6f88430688108e512f7405ac3c73d47f5c370780b94182854ea2cddc6bd59929
+    ports:
+      - "8180:8080"
+    volumes:
+      - ./apps/Log4j-Vulnerable/flags:/flags:ro
+    networks:
+      - log4j-net
+    restart: unless-stopped
+
+  # ----- RT-Log4j: attacker workstation + training UI (same network as Log4j lab) -----
+  rt-log4j-attacker:
+    platform: linux/amd64
+    build:
+      context: ./apps/RT-Log4j
+      dockerfile: docker/attacker/Dockerfile
+    hostname: rt-log4j-attacker
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    command: ["sleep", "infinity"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Reach published lab ports on the host (same mapping as localhost:8101–8103 from the host OS).
+      - TARGET_HOST=host.docker.internal
+      # Victim containers must resolve this hostname to pull LDAP/HTTP stages from marshalsec.
+      - ATTACKER_HOST=rt-log4j-attacker
+      - ATTACKER_PORT=9999
+      - LOG4J_AUTH_PORT=8101
+      - LOG4J_INVENTORY_PORT=8102
+      - LOG4J_STATUS_PORT=8103
+    volumes:
+      - ./apps/RT-Log4j/tools:/app/tools
+      - ./apps/RT-Log4j/config:/app/config
+      - ./apps/RT-Log4j/loot:/app/loot
+      - ./apps/RT-Log4j/logs:/app/logs
+    networks:
+      - log4j-net
+    restart: unless-stopped
+
+  rt-log4j-training-ui:
+    image: nginx:alpine
+    ports:
+      # Avoid collision with Splunk UI on 8000 (standalone RT-Log4j compose uses 8000).
+      - "8020:80"
+    volumes:
+      - ./apps/RT-Log4j/docs/training-ui:/usr/share/nginx/html:ro
+    networks:
+      - log4j-net
+    restart: unless-stopped
 
   # ----- SBOM-XRay lab (CLI; bundled image tars via bind mount; isolated network) -----
   sbom-xray-lab:

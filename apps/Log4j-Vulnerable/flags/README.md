@@ -5,7 +5,7 @@ This directory contains the **File-System Flags** for this challenge.
 A "Flag" is a text file containing a secret string (e.g., `FLAG{you_found_me}`). Finding this file is proof that the Red Team has compromised the server's file system.
 
 ## ⚙️ How it works
-This folder is **mounted** into the auth and inventory containers via the **root** `docker-compose.yaml` (`./apps/Log4j-Vulnerable/flags:/flags:ro`).
+This folder is **mounted** directly into the Vulnerable Machine's container via `docker-compose.yml`.
 
 1.  **You put a file here:** `flags/system.txt`
 2.  **Docker maps it:** It appears inside the container at `/flags/system.txt` (or wherever you mapped it).
@@ -16,7 +16,7 @@ This folder is **mounted** into the auth and inventory containers via the **root
 2.  Paste a unique string inside.
     * *Format:* `FLAG{descriptive_name_randomstring}`
     * *Example:* `FLAG{legacy_crm_root_access_8a92b}`
-3.  Ensure the root compose file mounts this volume (already configured for `log4j-auth-service` and `log4j-inventory-service`):
+3.  Ensure your `docker-compose.yml` mounts this volume:
     ```yaml
     volumes:
       - ./flags:/flags:ro
