@@ -82,7 +82,9 @@ Get the environment running in minutes.
     ```
     *Wait ~5 minutes for Splunk to initialize. Use `make logs-splunk` if it hangs.*
 
-> **[IMAGE: Dashboard showing all containers running in Docker Desktop or terminal]**
+<p align="center">
+<img src="resources/images/setup.jpg" width="600" alt="Docker desktop and terminal window showing running containers">
+</p>
 
 ---
 
