@@ -1,0 +1,9 @@
+---
+- name: Deploy SBOM Training Module 1
+  hosts: analysis
+  gather_facts: true
+  vars:
+    sbom_mode: deploy
+  roles:
+    - sbom_module1
+

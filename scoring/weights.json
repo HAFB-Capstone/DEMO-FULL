@@ -1,0 +1,45 @@
+{
+  "checks": [
+    {
+      "id": "bundle_source_present",
+      "label": "Offline bundle source exists",
+      "points": 10
+    },
+    {
+      "id": "lab_directory_present",
+      "label": "Installed lab directory exists",
+      "points": 15
+    },
+    {
+      "id": "student_artifacts_present",
+      "label": "Required student artifacts exist",
+      "points": 20
+    },
+    {
+      "id": "instructor_materials_present",
+      "label": "Instructor materials copied",
+      "points": 10
+    },
+    {
+      "id": "syft_available",
+      "label": "Syft available on PATH",
+      "points": 10
+    },
+    {
+      "id": "jq_available",
+      "label": "jq available on PATH",
+      "points": 10
+    },
+    {
+      "id": "compat_symlink_present",
+      "label": "Compatibility symlink exists",
+      "points": 5
+    },
+    {
+      "id": "official_validator_passes",
+      "label": "Official Module 1 validator passes",
+      "points": 20
+    }
+  ]
+}
+

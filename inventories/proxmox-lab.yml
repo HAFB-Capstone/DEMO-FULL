@@ -1,0 +1,15 @@
+all:
+  children:
+    control:
+      hosts:
+        controlOps:
+          ansible_connection: local
+
+    managed:
+      children:
+        analysis:
+          hosts:
+            ubuntuBlue:
+              ansible_host: 192.168.86.37
+              ansible_user: student
+              ansible_become: false

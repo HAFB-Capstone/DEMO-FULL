@@ -1,0 +1,48 @@
+---
+- name: Check validator script exists in staged bundle
+  ansible.builtin.stat:
+    path: "{{ sbom_stage_dir }}/{{ sbom_bundle_validate_script }}"
+  register: sbom_stage_validate_script_stat
+
+- name: Assert Linux target for Module 1 validation
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.system == "Linux"
+    fail_msg: "SBOM Module 1 validator is Linux-targeted. Run validation on ubuntuBlue or another Linux analysis VM."
+    success_msg: "Linux target confirmed for Module 1 validation."
+
+- name: Check installed lab directory exists
+  ansible.builtin.stat:
+    path: "{{ sbom_lab_dir }}"
+  register: sbom_lab_dir_stat
+
+- name: Assert validation prerequisites are present
+  ansible.builtin.assert:
+    that:
+      - sbom_stage_validate_script_stat.stat.exists
+      - sbom_lab_dir_stat.stat.exists
+      - sbom_lab_dir_stat.stat.isdir
+    fail_msg: "Validation prerequisites are missing. Run deploy first or check the staging path."
+    success_msg: "Validation prerequisites are present."
+
+- name: Run Module 1 offline validator
+  ansible.builtin.command:
+    cmd: "bash {{ sbom_stage_dir }}/{{ sbom_bundle_validate_script }} --lab-dir {{ sbom_lab_dir }}"
+  environment:
+    PATH: "{{ sbom_runtime_path }}"
+  register: sbom_validate_command
+  changed_when: false
+
+- name: Write validation log
+  ansible.builtin.copy:
+    dest: "{{ sbom_lab_dir }}/.hafb_range_control_last_validate.txt"
+    content: |
+      {{ sbom_validate_command.stdout }}
+      {{ sbom_validate_command.stderr }}
+    mode: "0644"
+
+- name: Show validation result
+  ansible.builtin.debug:
+    msg:
+      - "SBOM Module 1 validation passed."
+      - "{{ sbom_validate_command.stdout_lines | default([]) }}"

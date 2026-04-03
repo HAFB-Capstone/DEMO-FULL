@@ -1,0 +1,195 @@
+# Control VM Rollout
+
+## Goal
+
+Create a dedicated Linux VM on Proxmox whose only job is:
+
+- host `hafb-range-control`
+- run Ansible
+- store reports
+- later host the scoring dashboard
+
+This VM becomes the automation and scoring control node for the lab.
+
+## Recommended VM role
+
+Use a small Ubuntu Server VM for the first version of the Control VM.
+
+Recommended baseline:
+
+- 2 vCPU
+- 4 GB RAM
+- 32 GB disk
+- one NIC on the internal lab network
+- static IP or reserved DHCP lease
+- OpenSSH enabled
+
+## Step-by-step Proxmox implementation
+
+### 1. Create the VM
+
+In Proxmox:
+
+1. click `Create VM`
+2. name it something like `controlOps` or `hafb-control`
+3. select the Ubuntu Server ISO already approved for the lab
+4. assign disk, CPU, memory, and network
+5. finish the wizard and start the VM
+
+### 2. Install the base OS
+
+During install:
+
+- create a normal admin user
+- enable OpenSSH server
+- put the VM on the same internal network as `ubuntuBlue`
+- avoid any configuration that assumes internet access after deployment
+
+### 3. Verify network reachability
+
+From the Control VM:
+
+```bash
+hostname
+ip a
+ping -c 3 ubuntuBlue
+```
+
+If DNS does not resolve hostnames, use IP addresses instead.
+
+If the lab requires a jump path, route SSH through `bastion`. If the Control VM sits on the same internal network as `ubuntuBlue`, keep the first test direct and avoid bastion complexity.
+
+### 4. Install required tools
+
+Install these from your approved internal package source:
+
+- `git`
+- `ansible`
+- `openssh-client`
+- `python3`
+
+Then verify:
+
+```bash
+ansible-playbook --version
+python3 --version
+git --version
+ssh -V
+```
+
+### 5. Copy the control repo to the Control VM
+
+However your air-gapped workflow supports it:
+
+- internal Git mirror
+- scp
+- removable media
+- datastore copy
+
+Then:
+
+```bash
+cd ~
+ls -lah
+cd ~/hafb-range-control
+```
+
+### 6. Create a real inventory
+
+Start from the example:
+
+```bash
+cp inventories/proxmox-lab.example.yml inventories/proxmox-lab.yml
+```
+
+Edit:
+
+- Control VM hostname/IP
+- `ubuntuBlue` hostname/IP
+- any later targets such as `ubuntuVictim`
+- SSH user for each target
+
+### 7. Set up SSH trust from Control VM to target VM
+
+On the Control VM:
+
+```bash
+ssh-keygen -t ed25519
+ssh-copy-id student@ubuntuBlue
+```
+
+If `ssh-copy-id` is unavailable, append the public key manually to `~/.ssh/authorized_keys` on `ubuntuBlue`.
+
+Then test:
+
+```bash
+ssh student@ubuntuBlue hostname
+```
+
+If direct SSH is not allowed and `bastion` must be used, add `ansible_ssh_common_args` in the inventory later. Do not introduce that until direct SSH has been ruled out.
+
+### 8. Test Ansible connectivity
+
+Run:
+
+```bash
+./scripts/ping_targets.sh -i inventories/proxmox-lab.yml
+```
+
+What success looks like:
+
+- Ansible can connect to `ubuntuBlue`
+- the ping module returns success
+- host facts can be gathered
+
+### 9. Stage the Module 1 bundle on the Control VM
+
+On the Control VM:
+
+```bash
+mkdir -p ~/bundles
+cp -R /path/from/internal-media/Module1-offline-bundle-sbom-xray-2026-03-25_004519 ~/bundles/
+export SBOM_BUNDLE_SOURCE_DIR=~/bundles/Module1-offline-bundle-sbom-xray-2026-03-25_004519
+```
+
+Important: `sbom_bundle_source_dir` is read on the Ansible controller. In the Control-VM architecture, that means the offline bundle must exist on the Control VM first. The playbook then copies the bundle from the Control VM to `ubuntuBlue`.
+
+### 10. Run the real deploy from the Control VM
+
+```bash
+./scripts/deploy.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
+./scripts/validate.sh -i inventories/proxmox-lab.yml --limit ubuntuBlue
+```
+
+### 11. Run the readiness score for the current MVP
+
+The current `score.sh` checks local filesystem paths and local tool availability. That means it is still easiest to run on `ubuntuBlue` for the first MVP proof.
+
+If the repo is also present on `ubuntuBlue`, use:
+
+```bash
+ssh student@ubuntuBlue 'cd ~/hafb-range-control && ./scripts/score.sh'
+```
+
+Later, that readiness score should be moved into an Ansible-collected report or the future Control-VM dashboard.
+
+## What to prove in testing
+
+For the first Control VM milestone, prove these things only:
+
+- the Control VM can reach `ubuntuBlue`
+- Ansible can run from the Control VM
+- Module 1 can be deployed to `ubuntuBlue`
+- Module 1 can be validated
+- the readiness score can be generated for the deployed module
+
+That is enough for the first serious proof-of-concept.
+
+## What comes after
+
+Once the Control VM path works:
+
+- add a second module or service
+- add `ubuntuVictim` to inventory
+- add the first Wazuh ingestion endpoint for the future dashboard
+- add a simple web UI for score and service state
