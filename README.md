@@ -100,7 +100,11 @@ Explore and exploit intentional vulnerabilities across different domains.
 *   **Target**: Auth Service (:8101) or Inventory Service (:8102).
 *   **Method**: Use the embedded RT-Log4j attacker container and training UI to probe the guided services, then compare against the standalone vulnerable app.
 *   **Guided UI**: `http://localhost:8020`
+
+<p align="center">
 <img width="2880" height="1710" alt="Log4j Training Module" src="https://github.com/user-attachments/assets/13b35f00-fad0-4435-a587-c12c08299d36" />
+</p>
+
 *   **Attacker Shell**: `make rt-log4j-shell`
 *   **Manual Comparison Target**: `http://localhost:8180`
 
