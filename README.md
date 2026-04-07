@@ -100,6 +100,7 @@ Explore and exploit intentional vulnerabilities across different domains.
 *   **Target**: Auth Service (:8101) or Inventory Service (:8102).
 *   **Method**: Use the embedded RT-Log4j attacker container and training UI to probe the guided services, then compare against the standalone vulnerable app.
 *   **Guided UI**: `http://localhost:8020`
+<img width="2880" height="1710" alt="Log4j Training Module" src="https://github.com/user-attachments/assets/13b35f00-fad0-4435-a587-c12c08299d36" />
 *   **Attacker Shell**: `make rt-log4j-shell`
 *   **Manual Comparison Target**: `http://localhost:8180`
 
@@ -145,6 +146,8 @@ Use Splunk to detect attacks and learn how to patch the environment.
 *   **MIL-STD-1553**: Implement filename validation and signature checking in `apps/MIL-STD-1553-Vulnerable/src/logistics-portal/app.py`.
 
 > **[IMAGE: Splunk search result showing a detected Log4Shell injection attempt]**
+<img width="2876" height="1460" alt="Splunk Log4j Alerts" src="https://github.com/user-attachments/assets/91dd6586-e915-4249-bd6a-cda7b61c98b0" />
+
 
 ---
 
