@@ -121,4 +121,4 @@ shell:
 	$(COMPOSE) exec $(SERVICE) /bin/bash || $(COMPOSE) exec $(SERVICE) /bin/sh || $(COMPOSE) exec $(SERVICE) sh
 
 rt-log4j-shell:
-	$(COMPOSE) exec rt-log4j-attacker /bin/bash
+	docker exec -it hafb-demo-rt-log4j-attacker-1 /bin/bash

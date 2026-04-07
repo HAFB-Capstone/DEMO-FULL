@@ -7,5 +7,5 @@ target:
   host: "host.docker.internal"
 
 attacker:
-  host: "rt-log4j-attacker"
+  host: "hafb-demo-rt-log4j-attacker"
   port: 9999

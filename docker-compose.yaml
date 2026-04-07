@@ -154,18 +154,17 @@ services:
     restart: unless-stopped
 
   rt-log4j-attacker:
-    image: rt-log4j-attacker
     build:
       context: ./apps/RT-Log4j
       dockerfile: docker/attacker/Dockerfile
-    hostname: rt-log4j-attacker
+    hostname: hafb-demo-rt-log4j-attacker
     working_dir: /app
     stdin_open: true
     tty: true
     command: /bin/bash
     environment:
       - TARGET_HOST=host.docker.internal
-      - ATTACKER_HOST=rt-log4j-attacker
+      - ATTACKER_HOST=hafb-demo-rt-log4j-attacker
       - ATTACKER_PORT=9999
       - LOG4J_AUTH_PORT=8101
       - LOG4J_INVENTORY_PORT=8102
