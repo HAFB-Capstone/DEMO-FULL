@@ -128,7 +128,8 @@ Understand how to identify vulnerable components before they are exploited.
 2. **Follow the lab materials** in `apps/SBOM-XRay/`:
    - **[Student guide](apps/SBOM-XRay/sbom-xray-lab-student-guide.md)** — context, tooling, and walkthrough
    - **[Student worksheet](apps/SBOM-XRay/sbom-xray-lab-student-worksheet.md)** — exercises and deliverables
-> **[IMAGE: Screenshot of a Syft scan result highlighting the Log4j vulnerability]**
+> **Screenshot: Syft scan result highlighting the Log4j vulnerability**
+<img src="resources/images/syft_results.png" width="1200" alt="Syft scan result highlighting the Log4j vulnerability" />
 
 ---
 
