@@ -64,27 +64,33 @@ flowchart TB
 Get the environment running in minutes.
 
 ### Prerequisites
-*   **Docker** with Compose v2
-*   **GNU Make** and **Bash** (WSL2/Git Bash for Windows)
+
+- **Docker** with Compose v2
+- **GNU Make** and **Bash** (WSL2/Git Bash for Windows)
 
 ### Step-by-Step Instructions
+
 1.  **Initialize Environment**:
+
     ```bash
     make setup
     ```
-    *This creates your `.env` file and downloads necessary Splunk payloads.*
+
+    _This creates your `.env` file and downloads necessary Splunk payloads._
 
 2.  **Start the Stack**:
+
     ```bash
     make up
     ```
-    *This builds all images and starts the entire environment, including log forwarders.*
+
+    _This builds all images and starts the entire environment, including log forwarders._
 
 3.  **Validate Health**:
     ```bash
     make validate
     ```
-    *Wait ~5 minutes for Splunk to initialize. Use `make logs-splunk` if it hangs.*
+    _Wait ~5 minutes for Splunk to initialize. Use `make logs-splunk` if it hangs._
 
 <p align="center">
 <img src="resources/images/setup.jpg" width="600" alt="Docker desktop and terminal window showing running containers">
@@ -97,25 +103,29 @@ Get the environment running in minutes.
 Explore and exploit intentional vulnerabilities across different domains.
 
 ### Attack Path 1: Log4Shell (JNDI Injection)
-*   **Target**: Auth Service (:8101) or Inventory Service (:8102).
-*   **Method**: Use the embedded RT-Log4j attacker container and training UI to probe the guided services, then compare against the standalone vulnerable app.
-*   **Guided UI**: `http://localhost:8020`
+
+- **Target**: Auth Service (:8101) or Inventory Service (:8102).
+- **Method**: Use the embedded RT-Log4j attacker container and training UI to probe the guided services, then compare against the standalone vulnerable app.
+- **Guided UI**: `http://localhost:8020`
 
 <p align="center">
-<img width="2880" height="1710" alt="Log4j Training Module" src="https://github.com/user-attachments/assets/13b35f00-fad0-4435-a587-c12c08299d36" />
+<img width="600" alt="Log4j Training Module" src="resources/images/log4j-training-module.png" />
 </p>
 
-*   **Attacker Shell**: `make rt-log4j-shell`
-*   **Manual Comparison Target**: `http://localhost:8180`
+- **Attacker Shell**: `make rt-log4j-shell`
+- **Manual Comparison Target**: `http://localhost:8180`
 
 ### Attack Path 2: MIL-STD-1553 Supply Chain
-*   **Target**: Internal Avionics Serial Bus.
-*   **Method**:
-    1.  Upload a poisoned `daily_maintenance.sh` script to the **Logistics Portal** (:9080).
-    2.  The **Maintenance Terminal** pulls and executes the script.
-    3.  The script sends unauthorized UDP commands to the **Serial Bus**.
 
-> **[IMAGE: Diagram of the MIL-STD-1553 attack chain showing the leap from public to internal network]**
+- **Target**: Internal Avionics Serial Bus.
+- **Method**:
+  1.  Upload a poisoned `daily_maintenance.sh` script to the **Logistics Portal** (:9080).
+  2.  The **Maintenance Terminal** pulls and executes the script.
+  3.  The script sends unauthorized UDP commands to the **Serial Bus**.
+
+<p align="center">
+    <img width="600" alt="Diagram of the MIL-STD-1553 attack chain showing the leap from public to internal network" src="resources/images/mil-std-1553.png" />
+</p>
 
 ---
 
@@ -125,11 +135,10 @@ Understand how to identify vulnerable components before they are exploited.
 
 1.  **Enter Lab**: `make shell SERVICE=sbom-xray-lab`
 
-2. **Follow the lab materials** in `apps/SBOM-XRay/`:
-   - **[Student guide](apps/SBOM-XRay/sbom-xray-lab-student-guide.md)** — context, tooling, and walkthrough
-   - **[Student worksheet](apps/SBOM-XRay/sbom-xray-lab-student-worksheet.md)** — exercises and deliverables
-> **Screenshot: Syft scan result highlighting the Log4j vulnerability**
-<img src="resources/images/syft_results.png" width="1200" alt="Syft scan result highlighting the Log4j vulnerability" />
+2.  **Follow the lab materials** in `apps/SBOM-XRay/`: - **[Student guide](apps/SBOM-XRay/sbom-xray-lab-student-guide.md)** — context, tooling, and walkthrough - **[Student worksheet](apps/SBOM-XRay/sbom-xray-lab-student-worksheet.md)** — exercises and deliverables
+<p align="center">
+    <img src="resources/images/syft_results.png" width="600" alt="Syft scan result highlighting the Log4j vulnerability" />
+</p>
 
 ---
 
@@ -138,35 +147,39 @@ Understand how to identify vulnerable components before they are exploited.
 Use Splunk to detect attacks and learn how to patch the environment.
 
 ### Defensive Operations (Splunk)
-*   **Access**: `http://localhost:8000` (User: `admin` / Pass: Check `.env`)
-*   **Dashboards**: Open the "Blue Team Summary" dashboard to see failed logins, file uploads, and bus activity.
-*   **Field Parsing**: Logs are pre-parsed into fields like `loglevel`, `src_ip`, `method`, and `status_code` for easy searching.
+
+- **Access**: `http://localhost:8000` (User: `admin` / Pass: Check `.env`)
+- **Dashboards**: Open the "Blue Team Summary" dashboard to see failed logins, file uploads, and bus activity.
+- **Field Parsing**: Logs are pre-parsed into fields like `loglevel`, `src_ip`, `method`, and `status_code` for easy searching.
 
 ### Lab health & scoring (`hafb-scoring-ops`)
-*   **Access**: `http://localhost:8090` — overall score and per-family HTTP checks against the Log4j and MIL-STD-1553 labs.
-*   Use **Start** for live probes inside Compose, or **Demo** for deterministic scripted scenarios (good for dry runs without touching victims).
+
+- **Access**: `http://localhost:8090` — overall score and per-family HTTP checks against the Log4j and MIL-STD-1553 labs.
+- Use **Start** for live probes inside Compose, or **Demo** for deterministic scripted scenarios (good for dry runs without touching victims).
 
 ### Fixing the Exploits
-*   **Log4j**: Update the `pom.xml` in the service directories to use Log4j 2.17.1+ and rebuild.
-*   **MIL-STD-1553**: Implement filename validation and signature checking in `apps/MIL-STD-1553-Vulnerable/src/logistics-portal/app.py`.
 
-> **[IMAGE: Splunk search result showing a detected Log4Shell injection attempt]**
-<img width="2876" height="1460" alt="Splunk Log4j Alerts" src="https://github.com/user-attachments/assets/91dd6586-e915-4249-bd6a-cda7b61c98b0" />
+- **Log4j**: Update the `pom.xml` in the service directories to use Log4j 2.17.1+ and rebuild.
+- **MIL-STD-1553**: Implement filename validation and signature checking in `apps/MIL-STD-1553-Vulnerable/src/logistics-portal/app.py`.
 
+<p align="center">
+    <img width="600" alt="Splunk Log4j Alerts" src="resources/images/splunk-log4j-alerts.png" />
+</p>
 
 ---
 
 ## Management Cheat Sheet
 
-| Command | Description |
-| :--- | :--- |
-| `make help` | Show all available commands |
-| `make up` | Start everything (Profile: Forwarders included) |
-| `make down` | Stop everything and wipe temporary data |
-| `make urls` | Show all service URLs and credentials |
-| `make test` | Run automated health and security tests |
-| `make logs` | View application logs (excludes Splunk noise) |
-| `make shell SERVICE=<name>` | Open a terminal in a specific container |
+| Command                     | Description                                     |
+| :-------------------------- | :---------------------------------------------- |
+| `make help`                 | Show all available commands                     |
+| `make up`                   | Start everything (Profile: Forwarders included) |
+| `make down`                 | Stop everything and wipe temporary data         |
+| `make urls`                 | Show all service URLs and credentials           |
+| `make test`                 | Run automated health and security tests         |
+| `make logs`                 | View application logs (excludes Splunk noise)   |
+| `make shell SERVICE=<name>` | Open a terminal in a specific container         |
 
 ---
-*For training purposes only. Run in isolated lab environments.*
+
+_For training purposes only. Run in isolated lab environments._
