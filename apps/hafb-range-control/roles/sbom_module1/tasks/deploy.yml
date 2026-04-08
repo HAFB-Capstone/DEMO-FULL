@@ -1,0 +1,113 @@
+---
+- name: Check bundle source directory on controller
+  ansible.builtin.stat:
+    path: "{{ sbom_bundle_source_dir }}"
+  delegate_to: localhost
+  register: sbom_bundle_source_stat
+  become: false
+
+- name: Assert Linux target for Module 1 installer
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.system == "Linux"
+    fail_msg: "SBOM Module 1 offline installer is Linux-targeted. Run this playbook against ubuntuBlue or another Linux analysis VM."
+    success_msg: "Linux target confirmed for Module 1 deployment."
+
+- name: Check installer script exists in bundle source
+  ansible.builtin.stat:
+    path: "{{ sbom_bundle_source_dir }}/{{ sbom_bundle_install_script }}"
+  delegate_to: localhost
+  register: sbom_bundle_install_script_stat
+  become: false
+
+- name: Assert bundle source is ready
+  ansible.builtin.assert:
+    that:
+      - sbom_bundle_source_stat.stat.exists
+      - sbom_bundle_source_stat.stat.isdir
+      - sbom_bundle_install_script_stat.stat.exists
+    fail_msg: "SBOM Module 1 bundle source is missing or incomplete. Set SBOM_BUNDLE_SOURCE_DIR or update sbom_bundle_source_dir."
+    success_msg: "SBOM Module 1 bundle source located successfully."
+
+- name: Ensure staging directory exists
+  ansible.builtin.file:
+    path: "{{ sbom_stage_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Copy offline bundle into staging directory
+  ansible.builtin.copy:
+    src: "{{ sbom_bundle_source_dir }}/"
+    dest: "{{ sbom_stage_dir }}/"
+    mode: preserve
+
+- name: Normalize student file names expected by the installer
+  ansible.builtin.shell: |
+    set -euo pipefail
+    student_dir="{{ sbom_stage_dir }}/student"
+    if [[ -f "$student_dir/sbom-xray-lab-student-guide.md" && ! -f "$student_dir/sbom-xray-lab-Module1-student-guide.md" ]]; then
+      cp "$student_dir/sbom-xray-lab-student-guide.md" "$student_dir/sbom-xray-lab-Module1-student-guide.md"
+    fi
+    if [[ -f "$student_dir/sbom-xray-lab-student-worksheet.md" && ! -f "$student_dir/sbom-xray-lab-Module1-student-worksheet.md" ]]; then
+      cp "$student_dir/sbom-xray-lab-student-worksheet.md" "$student_dir/sbom-xray-lab-Module1-student-worksheet.md"
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Allow user-space install mode in staged installer
+  ansible.builtin.replace:
+    path: "{{ sbom_stage_dir }}/{{ sbom_bundle_install_script }}"
+    regexp: |-
+      if command -v sudo >/dev/null 2>&1; then
+        SUDO="sudo"
+      else
+        SUDO=""
+      fi
+    replace: |-
+      if [[ "${SBOM_FORCE_USER_INSTALL:-0}" == "1" ]]; then
+        SUDO=""
+      elif command -v sudo >/dev/null 2>&1; then
+        SUDO="sudo"
+      else
+        SUDO=""
+      fi
+
+- name: Check for staged checksum manifest
+  ansible.builtin.stat:
+    path: "{{ sbom_stage_dir }}/SHA256SUMS.txt"
+  register: sbom_stage_checksum_manifest
+
+- name: Remove patched installer from staged checksum manifest
+  ansible.builtin.lineinfile:
+    path: "{{ sbom_stage_dir }}/SHA256SUMS.txt"
+    regexp: 'install-module1-offline\.sh\r?$'
+    state: absent
+  when: sbom_stage_checksum_manifest.stat.exists
+
+- name: Run Module 1 offline installer
+  ansible.builtin.command:
+    cmd: "bash {{ sbom_stage_dir }}/{{ sbom_bundle_install_script }} --lab-dir {{ sbom_lab_dir }}"
+    creates: "{{ sbom_install_stamp }}"
+  environment:
+    PATH: "{{ sbom_runtime_path }}"
+    SBOM_FORCE_USER_INSTALL: "1"
+  register: sbom_install_command
+
+- name: Write install stamp
+  ansible.builtin.copy:
+    dest: "{{ sbom_install_stamp }}"
+    content: |
+      installed_by=hafb-range-control
+      bundle_source={{ sbom_bundle_source_dir }}
+      stage_dir={{ sbom_stage_dir }}
+      lab_dir={{ sbom_lab_dir }}
+    mode: "0644"
+  when: sbom_install_command is changed
+
+- name: Show install result
+  ansible.builtin.debug:
+    msg:
+      - "SBOM Module 1 deployed."
+      - "Lab directory: {{ sbom_lab_dir }}"
+      - "Stage directory: {{ sbom_stage_dir }}"

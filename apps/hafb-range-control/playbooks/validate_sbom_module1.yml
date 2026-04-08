@@ -1,0 +1,9 @@
+---
+- name: Validate SBOM Training Module 1
+  hosts: analysis
+  gather_facts: true
+  vars:
+    sbom_mode: validate
+  roles:
+    - sbom_module1
+

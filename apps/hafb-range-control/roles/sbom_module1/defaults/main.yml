@@ -1,0 +1,9 @@
+---
+sbom_mode: deploy
+sbom_bundle_source_dir: "{{ lookup('env', 'SBOM_BUNDLE_SOURCE_DIR') | default(playbook_dir ~ '/../../SBOM-Training-Module/deploy/releases/Module1-offline-bundle-sbom-xray-2026-03-25_004519', true) }}"
+sbom_stage_dir: "{{ ansible_env.HOME }}/hafb-staging/module1-offline-bundle"
+sbom_lab_dir: "{{ ansible_env.HOME }}/labs/sbom-Module1-sbom-xray"
+sbom_bundle_install_script: install-module1-offline.sh
+sbom_bundle_validate_script: validate-module1-offline.sh
+sbom_install_stamp: "{{ sbom_lab_dir }}/.hafb_range_control_installed"
+sbom_runtime_path: "/usr/local/bin:{{ ansible_facts.env.HOME }}/.local/bin:{{ ansible_facts.env.PATH }}"

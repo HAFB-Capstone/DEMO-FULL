@@ -1,0 +1,8 @@
+.venv/
+.ansible/
+.demo/
+__pycache__/
+*.pyc
+.DS_Store
+reports/module1-score-latest.json
+reports/module1-score-latest.md

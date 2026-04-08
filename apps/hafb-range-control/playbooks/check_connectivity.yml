@@ -1,0 +1,16 @@
+---
+- name: Check Ansible connectivity to managed lab VMs
+  hosts: managed
+  gather_facts: true
+  tasks:
+    - name: Ping target
+      ansible.builtin.ping:
+
+    - name: Show host summary
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "System: {{ ansible_facts.system }}"
+          - "Kernel: {{ ansible_facts.kernel }}"
+          - "Default IPv4: {{ ansible_facts.default_ipv4.address | default('unknown') }}"
+
